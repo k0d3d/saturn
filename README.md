@@ -41,6 +41,9 @@ Existing local prototype: download and inspect `install.sh`, then run `bash inst
 
 Bind `omapulse command` in your Hyprland bindings using a key you choose. Existing Super+N bindings from the local prototype continue to work; a fresh install does not claim that shortcut. `omapulse dashboard` opens full screen; Escape returns to the compact workspace.
 
+On this workstation, **Super+Alt+N** opens the full dashboard. Its binding is
+`o.bind("SUPER + ALT + N", "Oma Pulse full dashboard", "omapulse dashboard")`.
+
 ## Renamed from Oma Owl
 
 Oma Pulse is the new name from version 0.6.0. The original GitHub URL redirects to the new repository, and the old website redirects to the new site. The plugin identifier `kosta.omaowl` and `omaowl` data directories intentionally remain stable so updates preserve accounts, notes and bar placement. Existing `omaowl` commands and IPC shortcuts still work; new installations also provide `omapulse`. Run the desktop installer once after updating to refresh your app-menu name and icon.
@@ -63,6 +66,51 @@ All integrations are optional:
 | Voxtype | Install and configure Voxtype's daemon | Dictation into the command input |
 
 The HEY adapter expects the CLI's `box view imbox --json`, `seen` / `unseen`, and `watch` commands. Codex uses `exec` with structured output and an existing login. These optional CLIs can change; check helper errors and your installed CLI version when troubleshooting. Third-party services may require accounts or paid plans. No service subscription is included.
+
+## Messages
+
+The **Workspace** tab includes a Messages card next to mail, with unread counts,
+scrollable previews, refresh, and an **Open messages** button. Open **Messages**
+(or run `omapulse messages`) for the full unread conversation view.
+
+Message sources default to **Text messages (Blip)** only. Use **Sources** in the
+workspace Messages widget, Messages page, or Connections to enable **Slack (via
+Beeper)** and **Other Beeper messages** independently. These choices persist and
+apply before Key/All filtering, unread counts and previews. Disabling a provider
+stops polling it when none of its sources are selected, while retaining its connection.
+**Texts** shows Blip; **Slack** filters Slack accounts connected to Beeper; **Beeper**
+shows all Beeper networks. Click a row to open that exact conversation in Blip or
+Beeper. Slack opens inside Beeper. There is no separate Slack OAuth connection.
+
+Previews refresh every 30 seconds while Workspace, Messages, or Connections is visible.
+Reading the preview list does not mark conversations read; opening the source app
+uses that app’s normal read behavior. Content stays in memory, outside the saved
+workspace and assistant context. A connection failure is shown alongside the feed.
+
+Click **✓** on a conversation in either view to mark it read. Pulse removes it
+once the provider confirms the change; new arrivals remain unread and can bring
+it back. Blip uses its local read ledger and existing `push_read` policy: the
+usual `all` setting clears Blip/Pulse but does not push individual reads to the
+phone. `thread` also requests per-conversation sync through the Mac.
+
+Blip needs the optional preview/read bridge; Beeper needs a Desktop API token.
+See [message setup](CONNECTIONS.md#messages-blip-and-beeper-including-slack).
+
+**Key messages** is the default in both the card and full view. A local preview
+filter hides likely sales and automated texts while keeping personal conversations
+and work chats. Switch to **All** to review
+everything. The **⋯** menu on each conversation lets you always keep it, hide it
+from Key, or return to automatic filtering. These choices are saved locally as
+conversation IDs and preferences, with no message text. **Keep useful alerts**
+in the full view can include verification codes, deliveries and appointment
+reminders; it is off by default.
+
+The filter also handles dollar-off deals, early-access/restock campaigns, bare
+shopping links, and opt-out variants such as “TXT STOP” and “STOP to stop”.
+
+Filtering is a best-effort guess from the latest preview, not contact-list or
+whole-thread analysis. It never deletes, blocks or marks anything read. Unknown
+texts remain visible by default; review All if something seems missing.
 
 ## Todoist
 
@@ -131,9 +179,102 @@ and appending notes. Results are shown after execution. It can answer questions 
 but this version does not send mail, modify arbitrary system settings, or execute generated shell code.
 
 **Voice** uses the existing Voxtype daemon. Click again to stop; the transcript fills the input
-for review before submission. No wake-word listener or spoken replies are enabled. Closing the
+for review before submission. Optional **Hey Pulse** adds hands-free commands and spoken replies; see below. Closing the
 window cancels an active Oma Pulse recording. Codex can use live web search for weather, news, and current facts. Answers include source links. Desktop tool access stays disabled, with an isolated
 working directory; it only proposes actions, which the app validates and runs for direct requests.
+
+## Hey Pulse voice control
+
+Say **“Hey Pulse”**, then your request. A short two-note chime confirms it heard you. The wake phrase is detected locally with
+Vosk and confirmed locally with Whisper; no local voice or planner answers it.
+After confirmation, a Grok voice session starts. A bounded RAM buffer preserves
+the wake phrase and request during connection setup, then audio streams directly
+to Grok. Wake mode sends 16 kHz microphone audio and plays 24 kHz Grok audio.
+
+Grok controls the desktop directly through a fixed list of actions, so spoken
+commands run at once and can be chained in one breath ("set the volume to 30,
+switch to Slack and take a screenshot"): open or switch to apps, open sites,
+move, close, float or fullscreen windows, change workspace, volume, media,
+brightness, night light, do not disturb, theme and wallpaper, take a screenshot,
+lock the screen, type dictated text into the focused app, report system status,
+find and open files, run focus timers, and add tasks or notes. Every step is
+validated before any of them runs. Questions about existing tasks, calendar,
+notes or inbox still go to the Pulse assistant. Voice itself cannot run shell
+commands, delete files, install software or send messages.
+
+It can hand work to the AI agents on this computer: the agents running in
+[Herdr](https://herdr.dev) (“ask Codex 22 to fix the failing tests”, “what are my
+agents doing?”, “have a new Claude look at this”) and the Grok Bot desktop app
+(“tell Forge to …” for a bot by name, or “tell Grok Bot to …” for Zeus, the orchestrator). The task is sent as soon as you say it, with a
+notification showing exactly what went out and to whom. Pulse
+tells you when the agent finishes or needs approval; agents keep their own
+permission settings. A message to Grok Bot is typed into its window, so its
+reply is read there, not aloud.
+
+Enable **Connections → Hey Pulse · Wake Grok**, or `omapulse voiceWakeEnable`.
+The enabled preference survives desktop restarts. Continue a conversation without
+repeating the wake phrase. After a minute of silence or five minutes of cloud
+conversation, cloud audio stops and local wake detection rearms. Locking or
+starting dictation ends cloud streaming and pauses local wake detection.
+**Escape** or asking Grok to end the conversation stops cloud audio and rearms
+Hey Pulse; while it is only armed, Escape does nothing. **Shift+Escape** or
+**Mic off** turns the microphone off entirely. Enable Hey Pulse again to rearm it.
+
+Wake mode is built to stay on. A dropped network, a rejected session or a
+microphone that disappears ends only that conversation: Hey Pulse reports the
+problem and keeps listening, retrying the microphone with a short backoff. If the
+listener itself dies, the shell restarts it. The setting survives shell restarts.
+
+**Ctrl+Alt+P** starts a direct Grok conversation when voice is off and stops voice
+when it is on. **Stop reply** interrupts only the current answer. The bar tooltip
+shows **Hey Pulse → Grok** when wake mode is enabled. `omapulse voiceStatus`
+reports mode and state without transcripts. The older local spoken-reply process
+is no longer started by Pulse.
+
+Examples: “Hey Pulse, what's the weather?”, “Hey Pulse, open my browser”, or
+“Hey Pulse, start a twenty five minute timer.” The saved weather location and
+Grok's tools work identically in wake and keyboard-started conversations.
+
+Wake detection pauses while other applications play audible audio. Pause music
+or video before saying Hey Pulse. The playback guard only measures output levels
+in RAM; it does not save or transcribe playback audio.
+
+The desktop shortcut passes Escape through to the active application as usual:
+
+```lua
+o.bind("ESCAPE", "End Pulse conversation", "omapulse voiceStop", { non_consuming = true })
+o.bind("SHIFT + ESCAPE", "Turn Pulse microphone off", "omapulse voiceDisable")
+o.bind("CTRL + ALT + P", "Toggle Pulse microphone", "omapulse voiceToggle")
+```
+
+To install this optional feature on another machine:
+
+```sh
+python3 scripts/setup-voice.py
+omapulse voiceEnable
+```
+
+Requires Voxtype with the local `base.en` Whisper model, `parec`, `paplay`, `pactl`, and
+an active logind desktop session. Setup downloads Vosk’s small English model
+and Piper’s British English Alan voice into `${XDG_DATA_HOME:-~/.local/share}/oma-pulse-voice`
+with an isolated Python environment. English is currently supported. Startup
+can take a few seconds; failures appear in Connections. Wake recognition depends
+on microphone quality, distance and background speech; it is not speaker verification.
+
+Wake recognition, transcription and speech synthesis run locally. Microphone audio
+stays in RAM, including the short rolling wake buffer and command recordings.
+Commands and replies stay in Pulse’s session memory. Local supported commands run
+directly; other requests and the assistant’s existing task/calendar/note/mail context
+are sent to Codex using your existing login. The Assistant’s **Include mail previews**
+setting applies. Background audio is not sent to Codex. Recognition pauses while
+Voxtype is busy and while the screen is locked; Pulse ignores its own spoken replies.
+
+Voice controls use the same bounded actions as the assistant, plus desktop workspace,
+media, mute and window-focus controls. They do not provide unrestricted shell execution,
+file deletion, or message sending. Speech can be misheard; the overlay shows what Pulse
+heard, and only explicitly supported actions are executed. Long answers remain in the
+Assistant tab while the spoken version is shortened. A natural-language request can
+take longer than a local command while Codex responds.
 
 ## HEY mail
 
@@ -194,3 +335,47 @@ omarchy plugin validate .
 ## License and credits
 
 Publicly viewable source; no open-source license is granted at this time (`UNLICENSED`), following Oma Beats' distribution model. Barlow is used under the included SIL Open Font License. The original workspace concept was inspired by NotchOwl; Oma Pulse is an independent project, not affiliated with Omarchy or its connected services.
+## Grok live voice
+
+In **Connections → Grok live**, save an xAI API key and click **Start Grok live**.
+This streams microphone audio to xAI while the session is active and plays Grok's
+audio as it arrives. It uses separately billed xAI API usage, not Cursor Ultra.
+**Hey Pulse** starts this same Grok conversation after a local wake check.
+**Ctrl+Alt+P**, `omapulse voiceEnable`, and `omapulse voiceToggle` now use Grok by
+default. There is no fallback to the older local voice. Wake mode returns to local
+wake detection after an idle timeout; it does not keep cloud audio running.
+
+The prototype uses `grok-voice-latest`, Ara, PCM16 at 24 kHz, and server-side turn
+detection. A temporary PipeWire WebRTC echo-cancellation module lets you speak
+over a reply to interrupt. It routes only this session and does not change the
+desktop's default microphone or speakers; the module is removed when the session
+ends. If echo cancellation is unavailable, the UI says so and the microphone
+pauses during replies as a fallback. Use
+**Stop reply** to interrupt speech; **Escape / End chat / End Grok / Shift+Escape**
+ends the live conversation and turns the microphone off.
+Sessions also end after five minutes, one minute idle, desktop locking, or
+dictation starting. Commands use Pulse's existing assistant and action validation;
+these can take longer than ordinary conversation. The saved Omarchy weather city
+(with coordinates rounded to city-level precision) and local time are provided
+to both assistants. "What's the weather?" uses that location without another
+city question. Grok uses a direct Open-Meteo weather tool and its own web search
+for public information, avoiding the Codex handoff. Tasks, calendar, notes and
+inbox context are not preloaded into Grok; requested tool results are returned.
+
+**Turn detected → playback** measures from receipt of the server's end-of-speech
+event until the first audio is handed to local playback. It excludes the server's
+speech-end detection delay and the sound system's final buffering, so it is not a
+full mouth-to-ear measurement. Compare several short conversational turns.
+
+The key lives at `$XDG_CONFIG_HOME/oma-pulse/grok-api-key` (normally
+`~/.config/oma-pulse/grok-api-key`) with mode `0600`, outside the plugin and
+workspace JSON. `XAI_API_KEY` in the process environment takes precedence.
+Audio is held in RAM; this prototype does not save recordings or conversation
+transcripts to disk. Pulse's normal assistant handles delegated requests.
+
+The existing voice environment already includes WebSockets. On another machine,
+run `python3 scripts/setup-grok-voice.py`; `parec`, `paplay`, and `loginctl` are also
+required. CLI: `omapulse grokStart`, `omapulse grokStop`, `omapulse grokStatus`.
+`pactl` and PipeWire's WebRTC echo-cancellation module enable spoken interruption.
+Developer check: `grok_voice.py weather-probe` verifies the weather answer without
+opening the microphone or playing audio; it uses a small amount of xAI API usage.

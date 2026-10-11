@@ -49,3 +49,76 @@ Connecting verifies login and mailbox access before saving. The app password use
 - **Local tasks:** stay on your machine and are never uploaded when switching to Todoist.
 
 OAuth tokens and client settings stay in `${XDG_CONFIG_HOME:-~/.config}/omaowl/connections/` with private directory and file permissions (700/600). They are not included in workspace exports, process arguments, the website or releases. **Disconnect** deletes the selected local connection file; revoke the app in Google/Microsoft account settings to remove server-side consent. Errors preserve your existing connection rather than replacing it with a failed sign-in.
+
+
+## Messages: Blip and Beeper (including Slack)
+
+### Blip texts
+
+With Blip installed and its Mac bridge working, install the optional preview
+extension from the Oma Pulse directory:
+
+```sh
+python3 scripts/install-blip-preview.py
+```
+
+This patches only known Blip IPC/config anchors and backs up `BarWidget.qml`
+under `$XDG_STATE_HOME/omaowl-backups` (default `~/.local/state/omaowl-backups`).
+Unsupported versions are rejected before any change. The bridge source and tests
+are in `scripts/blip-preview/`; regenerate its module with
+`bun build scripts/blip-preview/pulse-preview.ts --target browser --format esm --outfile scripts/blip-preview/PulsePreview.mjs`.
+
+Add `pulse_previews=on` to `~/.config/blip/bridge.conf`, then run
+`omarchy restart shell`. This separate opt-in permits local processes to read
+unread names, counts, timestamps and snippets via `previews` IPC. It does not
+enable `automation` or sending. Per-conversation read actions have their own opt-in. Keep `automation=off` if
+you do not need those capabilities. Set `pulse_previews=off` to stop exporting.
+Blip upgrades may replace the local extension; reinstall it if Pulse reports
+that the bridge is missing. The Mac must be awake and reachable. Offline previews
+are labeled as potentially out of date.
+
+### Beeper and Slack
+
+1. In Beeper’s settings, enable **Desktop API**, using its default port 23373,
+   and create/copy an access token.
+2. In Pulse → **Connections**, paste the token into **Beeper Desktop API token**
+   and click **Connect Beeper**. Keep Beeper running.
+3. Connect Slack in Beeper to include those accounts. Pulse’s **Slack** filter
+   opens conversations in Beeper, not a separate Slack installation.
+
+The token is validated before saving in `${XDG_CONFIG_HOME:-~/.config}/omaowl/beeper.json`
+with mode 600. It travels through stdin, never command arguments. **Disconnect
+Beeper** removes that local credential. API requests use only `127.0.0.1:23373`,
+without proxies or redirects. Polling only lists chats; a click calls `/v1/focus`
+with the selected chat ID. The ✓ button calls `/v1/chats/{chatID}/read` through the displayed message ID; no send endpoint is used.
+
+Pulse scans up to 2,000 recent Beeper chats per refresh, follows pagination,
+and reports when more remain. Rows show the latest message preview for each
+unread conversation, which may be an outgoing message; they are not a list of
+individual unread messages. Muted and archived unread chats are included.
+The **All** view keeps Blip and Beeper separate, so a conversation connected
+through both may appear twice.
+
+API references: [Beeper Desktop API](https://developers.beeper.com/desktop-api/),
+[list chats](https://developers.beeper.com/desktop-api-reference/resources/chats/methods/list/).
+
+
+### Mark conversations read
+
+Install/update the Blip bridge with `python3 scripts/install-blip-preview.py`,
+add `pulse_mark_read=on` to `~/.config/blip/bridge.conf`, and restart the shell.
+This separate option permits local processes to request a read mark for one known
+conversation at its exact current preview timestamp. Sending stays disabled.
+Pulse waits for Blip’s read watermark to be saved before removing the preview.
+A newer preview causes the action to fail with a refresh prompt, rather than
+marking a message you have not seen. No real conversations are marked during tests.
+
+Blip’s existing `push_read=all` (default) clears the local Blip/Pulse unread state;
+it only pushes to Apple on Blip’s mark-all gesture. With `push_read=thread`, Blip
+also requests sync through Messages on the Mac. Pulse’s confirmation covers the
+local read ledger, not delivery of an Apple read receipt. Offline or unconfirmed
+requests show an error. This feature does not change `push_read`.
+
+Beeper uses its [mark-read API](https://developers.beeper.com/desktop-api-reference/php/resources/chats/methods/mark_read)
+with the displayed message ID so later arrivals remain unread. Missing message
+IDs require opening the conversation in Beeper. There is no bulk-read action.

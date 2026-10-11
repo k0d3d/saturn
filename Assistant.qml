@@ -18,9 +18,12 @@ Item {
     property bool includeMail: true
     property var apps: []
     property var pendingActions: []
+    property bool requestActive: false
+    property bool expectsReply: false
     readonly property bool busy: worker.running || pendingActions.length > 0
     signal transcribed(string text)
     signal actionFinished(string kind)
+    signal requestFinished(string text, bool ok, bool followUp)
     function quickApps(query) {
         var q = String(query).trim().toLowerCase().replace(/^open\s+/, "");
         if (q.length < 2 || q.length > 50) return [];
@@ -44,15 +47,32 @@ Item {
         worker.stdinEnabled = true; worker.running = true;
         return true;
     }
-    function ask(question) {
+    function ask(question, followUp) {
         question = String(question).trim();
         if (!question || busy || recording) return false;
+        requestActive=true;
+        expectsReply=false;
         var history = messages.slice(-12);
         actions = []; actionStates = [];
         append("user", question);
-        var local = Intents.parse(question, store.today);
+        var local = followUp ? null : Intents.parse(question, store.today);
+        if(!local && !followUp) {
+            var appQuery=question.match(/^(?:open|launch|start)\s+(.+?)[.!?]?$/i);
+            if(appQuery) {
+                var found=apps.filter(a => a.name.toLowerCase() === appQuery[1].toLowerCase());
+                if(found.length === 1) local=Intents.action("open_app",found[0].id);
+            }
+        }
         if (local) { actions = [local]; actionStates = ["Run"]; execute(0); return true; }
         return send({mode:"plan",question:question,context:context(),history:history});
+    }
+    // Runs one already-chosen action (the live voice session picks it), skipping the planner.
+    function run(action) {
+        if (busy || recording) return false;
+        requestActive=true; expectsReply=false;
+        actions = [action]; actionStates = ["Run"];
+        execute(0);
+        return true;
     }
     function label(action) {
         switch(action.kind) {
@@ -69,6 +89,22 @@ Item {
         case "set_volume": return "Set volume · " + action.number + "%";
         case "search_files": return "Find files named · " + action.value;
         case "open_file": return "Open file · " + action.value;
+        case "show_pulse": return action.value === "close" ? "Close Pulse" : "Open Pulse · " + action.value;
+        case "switch_workspace": return "Switch to workspace " + action.number;
+        case "media_control": return "Media · " + action.value;
+        case "mute_audio": return action.value === "on" ? "Mute audio" : "Unmute audio";
+        case "window_control": return "Window · " + action.value;
+        case "move_window": return "Move window to workspace " + action.number;
+        case "focus_app": return "Switch to · " + action.value;
+        case "list_windows": return "List open windows";
+        case "screenshot": return "Take a screenshot";
+        case "lock_screen": return "Lock the screen";
+        case "set_brightness": return "Set brightness · " + action.number + "%";
+        case "type_text": return "Type · " + action.value;
+        case "system_status": return "Check system status";
+        case "toggle_setting": return "Toggle · " + action.value.replace(/_/g, " ");
+        case "set_theme": return "Set theme · " + action.value;
+        case "next_wallpaper": return "Next wallpaper";
         default: return "Unsupported action";
         }
     }
@@ -79,6 +115,8 @@ Item {
         var action = actions[index]; error = ""; runningIndex = index;
         try {
             switch(action.kind) {
+            case "show_pulse":
+                store.showPulse(action.value); break;
             case "add_task":
                 if (store.useTodoist) { state(index,"Running…"); send({mode:"execute",action:action}); return; }
                 if (!store.ready || store.error) throw new Error("Tasks are unavailable.");
@@ -106,16 +144,26 @@ Item {
             }
             state(index, "Done"); append("result", label(action) + " — done.");
             actionFinished(action.kind); queueTimer.restart();
-        } catch(e) { pendingActions = []; state(index,"Retry"); error = String(e.message || e); }
+        } catch(e) { pendingActions = []; state(index,"Retry"); error = String(e.message || e); queueTimer.restart(); }
     }
     function acceptPlan(result) {
+        expectsReply=result.expects_reply === true;
         append("assistant", result.answer); actions = result.actions;
         actionStates = actions.map(a => "Run");
         pendingActions = result.auto_run === true ? actions.map((a, index) => index) : [];
         queueTimer.restart();
     }
     function runNext() {
-        if (worker.running || recording || !pendingActions.length) return;
+        if (worker.running || recording) return;
+        if (!pendingActions.length) {
+            if(requestActive) {
+                requestActive=false;
+                var brief=actions.length === 1 && actionStates[0] === "Done" ? Intents.confirmation(actions[0]) : "";
+                var question=expectsReply ? messages.filter(m => m.role === "assistant").slice(-1) : [];
+                requestFinished(error || (question.length ? question[0].text : brief) || (messages.length ? messages[messages.length-1].text : "Done."), !error, !error && expectsReply);
+            }
+            return;
+        }
         var index = pendingActions[0]; pendingActions = pendingActions.slice(1);
         execute(index);
     }

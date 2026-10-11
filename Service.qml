@@ -44,6 +44,8 @@ Item {
     readonly property alias gmail: gmailController
     readonly property alias outlook: outlookController
     readonly property alias googleCalendar: googleController
+    readonly property alias messages: messageController
+    MessageStore { id: messageController; store: root }
     HeyStore { id: mailController; active: root.mailEnabled && root.mailSource === "hey" }
     ProviderStore { id: gmailController; provider: "gmail"; active: root.ready && root.mailEnabled && root.mailSource === "gmail" }
     ProviderStore { id: outlookController; provider: "outlook"; active: root.ready && root.mailEnabled && root.mailSource === "outlook" }
@@ -79,6 +81,26 @@ Item {
     }
     readonly property alias assistant: assistantController
     Assistant { id: assistantController; store: root }
+    readonly property alias voice: voiceController
+    VoiceControl { id: voiceController; store: root }
+    readonly property alias grokVoice: grokController
+    GrokVoice { id: grokController; store: root }
+    VoiceOverlay { voice: grokController; liveConversation: true }
+    readonly property bool voiceActive: grokController.listeningEnabled || voiceController.listeningEnabled
+    readonly property string activeVoicePhase: grokController.listeningEnabled ? grokController.phase : voiceController.phase
+    readonly property string activeVoiceName: grokController.wakeEnabled ? "Hey Pulse → Grok" : "Grok live"
+    function showPulse(view) {
+        if(view === "close") { eachWindow(w => { w.commandOpen=false; w.dashboardOpen=false; w.close(); }); return; }
+        eachWindow(w => {
+            w.workspacePanel.messagesOpen=false; w.workspacePanel.assistantOpen=false;
+            w.workspacePanel.connectionsOpen=false; w.workspacePanel.insights=false;
+            if(view === "messages") w.workspacePanel.messagesOpen=true;
+            else if(view === "assistant") w.workspacePanel.assistantOpen=true;
+            else if(view === "connections") w.workspacePanel.connectionsOpen=true;
+            else if(view === "insights") w.workspacePanel.insights=true;
+            w.commandOpen=false; w.dashboardOpen=false; w.pinned=true; w.open();
+        });
+    }
     readonly property var localTasks: { taskRevision; return workspace.tasks.map(t => Object.assign({}, t)); }
     readonly property var tasks: useTodoist ? todoistController.tasks : localTasks
     readonly property var focusState: { revision; return Object.assign({}, workspace.focus); }
@@ -259,6 +281,23 @@ Item {
         return windows.count ? windows.objectAt(0) : null;
     }
     component Control: IpcHandler {
+        function barState(screen: string): string {
+            var w = root.windowForScreen(screen);
+            return JSON.stringify({opened: !!w && (w.expanded || w.dashboardOpen || w.commandOpen), running: root.focusState.running, timer: root.timerText, voiceEnabled: root.voiceActive, voicePhase: root.activeVoicePhase, voiceName:root.activeVoiceName});
+        }
+        function barAction(screen: string, action: string): void {
+            var w = root.windowForScreen(screen);
+            if (!w) return;
+            var opened = w.expanded || w.dashboardOpen || w.commandOpen;
+            if (action === "hover") {
+                if (!opened) { w.pinned = false; w.open(); }
+            } else if (action === "dashboard") w.openDashboard();
+            else if (action === "close" || (action === "click" && opened && w.pinned)) {
+                w.commandOpen = false; w.dashboardOpen = false; w.close();
+            } else if (action === "open" || action === "click") {
+                w.pinned = true; w.open();
+            }
+        }
         function open(): void { root.eachWindow(w => { w.pinned = true; w.open(); }); }
         function close(): void { root.eachWindow(w => { w.commandOpen = false; w.dashboardOpen = false; w.close(); }); }
         function dashboard(): void { if (windows.count > 0) windows.objectAt(0).openDashboard(); }
@@ -270,8 +309,19 @@ Item {
             var panels = []; root.eachWindow(w => panels.push({screen: w.screen.name, expanded: w.expanded, dashboard: w.dashboardOpen, command: w.commandOpen, timerPopout: w.timerPopout.visible, tab: w.currentTab, hovered: w.hovered}));
             return JSON.stringify({ready: root.ready, error: root.error, tasks: root.tasks.length, remaining: root.remainingTasks, taskSource: root.taskSource, mailSource: root.mailSource, calendarSource: root.calendarSource, todoistConnected: todoistController.connected, todoistBusy: todoistController.busy, todoistError: todoistController.error, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});
         }
+        function messages(): void { root.eachWindow(w => { w.pinned=true; w.open(); w.workspacePanel.messagesOpen=true; }); }
         function connections(): void { root.eachWindow(w => { w.pinned=true; w.open(); w.workspacePanel.connectionsOpen=true; }); }
         function mailStatus(): string { return JSON.stringify({provider:root.mailSource,connected: root.mail.connected, authenticated: root.mail.authenticated, newForYou: root.newMail.length, busy: root.mail.busy, error: root.mail.lastError}); }
+        function messageStatus(): string { return JSON.stringify({sources:{texts:root.messages.textsEnabled,slack:root.messages.slackEnabled,beeper:root.messages.beeperEnabled},keyOnly:root.messages.keyOnly,keepAlerts:root.messages.keepAlerts,conversations:root.messages.rows.length,filtered:root.messages.hiddenCount,busy:root.messages.busy,error:root.messages.error}); }
+        function voiceEnable(): void { root.grokVoice.setEnabled(true); }
+        function voiceWakeEnable(): void { root.grokVoice.enableWake(); }
+        function voiceDisable(): void { root.voice.setEnabled(false); root.grokVoice.setEnabled(false); }
+        function voiceToggle(): void { root.grokVoice.talk(); }
+        function voiceStop(): void { root.grokVoice.endConversation(); }
+        function grokStart(): void { root.grokVoice.setEnabled(true); }
+        function grokStop(): void { root.grokVoice.setEnabled(false); }
+        function grokStatus(): string { return JSON.stringify({configured:root.grokVoice.configured,ready:root.grokVoice.ready,enabled:root.grokVoice.listeningEnabled,state:root.grokVoice.phase,duplex:root.grokVoice.duplex,latencyMs:root.grokVoice.latencyMs,error:root.grokVoice.error}); }
+        function voiceStatus(): string { return JSON.stringify({enabled:root.voiceActive,state:root.activeVoicePhase,provider:root.activeVoiceName,wakeEnabled:root.grokVoice.wakeEnabled,localEnabled:false,grokEnabled:root.grokVoice.listeningEnabled,error:root.grokVoice.error}); }
     }
     Control { target: "omapulse" }
     Control { target: "omaowl" } // Compatibility for existing shortcuts.

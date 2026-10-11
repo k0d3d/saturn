@@ -31,6 +31,29 @@ ScrollView {
         width: pane.availableWidth; spacing: 14
         Copy { text: "Your apps. Your choice."; font.pixelSize: 25; font.bold: true }
         Copy { text: "Choose what appears in your workspace. Switching keeps your accounts and local tasks saved."; color: theme.muted }
+        Copy { text: "Hey Pulse · Wake Grok"; font.bold: true }
+        Copy { text: "Say “Hey Pulse”, then speak normally. The wake phrase is detected on this computer; after it is confirmed, Grok hears your request and replies in its own voice. A short audio buffer keeps the start of your request while Grok connects."; color: theme.muted }
+        Flow {
+            Layout.fillWidth: true; spacing: 8
+            Action { text: pane.store.voice.listeningEnabled ? "Hey Pulse on · Grok" : "Enable Hey Pulse"; selected: pane.store.voice.listeningEnabled; enabled:pane.store.grokVoice.ready; onClicked: pane.store.voice.setEnabled(!pane.store.voice.listeningEnabled) }
+        }
+        Copy { text: pane.store.voice.error || pane.store.voice.statusText; color: pane.store.voice.error ? theme.urgent : theme.muted }
+        Copy { text: "Grok Ara voice · no old local spoken replies. Continue the conversation without repeating Hey Pulse. After one minute idle, cloud audio stops and local wake listening resumes."; color: theme.muted }
+        Copy { text: "Esc or Shift+Esc turns the microphone off completely. Enable Hey Pulse again to rearm it. Wake listening pauses while locked, dictating or other apps play audio."; color: theme.muted }
+        Copy { text: "Try “Hey Pulse, show messages”, “open my browser”, “start a twenty five minute timer”, or “volume forty percent”. Say “Hey Pulse, stop listening” to turn the microphone off."; color: theme.muted }
+        Copy { text: "Grok live · Default voice"; font.bold: true }
+        Copy { text: "Ctrl+Alt+P starts or stops Grok. No wake phrase needed. Local weather uses the location saved in your Omarchy weather widget."; color: theme.muted }
+        Copy { text: "Start a live conversation without a wake phrase. Your microphone audio is sent to xAI while the session is on. Uses separately billed xAI API credits; Cursor Ultra does not cover it."; color: theme.muted }
+        Entry { id: grokKey; placeholderText: pane.store.grokVoice.configured ? "Replace xAI API key (optional)" : "xAI API key"; echoMode: TextInput.Password; maximumLength: 8192; enabled: !pane.store.grokVoice.settingsBusy && !pane.store.grokVoice.listeningEnabled; Accessible.name: "xAI API key" }
+        Flow {
+            Layout.fillWidth: true; spacing: 8
+            Action { text: "Save key"; enabled: !!grokKey.text.trim() && !pane.store.grokVoice.settingsBusy && !pane.store.grokVoice.listeningEnabled; onClicked: { pane.store.grokVoice.saveKey(grokKey.text); grokKey.clear(); } }
+            Action { text: pane.store.grokVoice.listeningEnabled ? "End Grok · mic off" : "Start Grok live"; selected: pane.store.grokVoice.listeningEnabled; enabled: pane.store.grokVoice.listeningEnabled || pane.store.grokVoice.canStart; onClicked: pane.store.grokVoice.setEnabled(!pane.store.grokVoice.listeningEnabled) }
+            Action { text: "Stop reply"; visible: pane.store.grokVoice.listeningEnabled; onClicked: pane.store.grokVoice.stopSpeaking() }
+        }
+        Copy { text: pane.store.grokVoice.error || (pane.store.grokVoice.configured ? pane.store.grokVoice.statusText : "Add your xAI key above. It is saved privately on this computer."); color: pane.store.grokVoice.error ? theme.urgent : theme.muted }
+        Copy { visible: pane.store.grokVoice.latencyMs >= 0; text: "Turn detected → playback: "+pane.store.grokVoice.latencyMs+" ms (excludes speech-end detection and speaker buffering)"; color: theme.muted }
+        Copy { text: (pane.store.grokVoice.listeningEnabled ? (pane.store.grokVoice.duplex ? "Echo cancellation on · speak to interrupt a reply. " : "Echo cancellation unavailable · mic pauses during replies. ") : "Echo cancellation enables spoken interruption when available. ")+"Esc ends the chat and turns the microphone off; Shift+Esc also turns it off. Ends after 5 minutes, 1 minute idle, or when the desktop locks. Desktop actions use your existing Pulse assistant."; color: theme.muted }
         Copy { text: "Tasks"; font.bold: true }
         Flow {
             Layout.fillWidth: true; spacing: 8
@@ -51,6 +74,23 @@ ScrollView {
             }
         }
         Copy { visible: pane.store.mailSource === "hey"; text: "HEY uses your existing HEY CLI login. Run hey auth login to connect."; color: theme.muted }
+        Copy { text: "Message sources"; font.bold: true }
+        RowLayout {
+            MessageSourceMenu { service: pane.store.messages }
+            Copy { text: pane.store.messages.sourceSummary; color: theme.muted }
+        }
+        Copy { text: "Text messages are on by default. Use Sources to add Slack or other Beeper messages. Your selection applies to the Messages page and workspace widget, and is saved between sessions."; color: theme.muted }
+        Copy { text: "Texts use Blip’s read-only preview bridge. Slack and other networks use accounts connected in Beeper. Previews stay in memory; click one to open the conversation."; color: theme.muted }
+        Copy { text: "For Beeper, enable Desktop API in Beeper’s settings, then paste its access token below. Keep Beeper running."; color: theme.muted }
+        Entry { id: beeperToken; placeholderText: "Beeper Desktop API token"; echoMode: TextInput.Password; maximumLength: 8192; enabled: !pane.store.messages.busy; Accessible.name: "Beeper Desktop API token" }
+        Flow {
+            Layout.fillWidth: true; spacing: 8
+            Action { text: "Connect Beeper"; enabled: !pane.store.messages.busy && !!beeperToken.text.trim(); onClicked: { pane.store.messages.connectToken(beeperToken.text); beeperToken.clear(); } }
+            Action { text: "Disconnect Beeper"; visible: pane.store.messages.beeperConfigured; enabled: !pane.store.messages.busy; onClicked: pane.store.messages.disconnectAccount() }
+        }
+        Copy { visible: !!pane.store.messages.error; text: pane.store.messages.error; color: theme.urgent }
+        Copy { text: pane.store.messages.beeperConfigured ? "Beeper token saved on this device." : "Beeper not connected."; color: theme.muted }
+        Copy { visible: !!pane.store.messages.blip.error; text: pane.store.messages.blip.error; color: theme.muted }
         Copy { text: "Calendar"; font.bold: true }
         Flow {
             Layout.fillWidth: true; spacing: 8

@@ -23,10 +23,16 @@ PanelWindow {
     property string taskView: "Today"
     property bool insights: false
     property bool assistantOpen: false
+    property bool messagesOpen: false
+    onMessagesOpenChanged: if (messagesOpen) { assistantOpen=false; connectionsOpen=false; insights=false; store.messages.refresh(); }
+    readonly property bool messageViewActive: visible && (messagesOpen || connectionsOpen || (!insights && !assistantOpen))
+    onMessageViewActiveChanged: store.messages.setViewActive(dash, messageViewActive)
+    Component.onDestruction: store.messages.setViewActive(dash, false)
+    Connections { target: dash.store.messages; function onOpened() { if(dash.visible) dash.close(); } }
     property bool connectionsOpen: false
-    onAssistantOpenChanged: if (assistantOpen) { connectionsOpen=false; Qt.callLater(() => assistantPane.focusInput()); }
-    onConnectionsOpenChanged: if (connectionsOpen) { assistantOpen=false; insights=false; }
-    onInsightsChanged: if (insights) connectionsOpen=false
+    onAssistantOpenChanged: if (assistantOpen) { messagesOpen=false; connectionsOpen=false; Qt.callLater(() => assistantPane.focusInput()); }
+    onConnectionsOpenChanged: if (connectionsOpen) { messagesOpen=false; assistantOpen=false; insights=false; }
+    onInsightsChanged: if (insights) { messagesOpen=false; connectionsOpen=false; }
     property string calendarDate: store.calendarToday
     readonly property int calendarIndex: store.agendaDays.findIndex(d => d.date === dash.calendarDate)
     readonly property var calendarDay: store.agendaDays[Math.max(0, calendarIndex)] || null
@@ -34,7 +40,7 @@ PanelWindow {
     readonly property color textColor: theme.text
     anchors { top: true; bottom: !dash.compact; left: !dash.compact; right: !dash.compact }
     margins.top: compact ? Style.bar.sizeHorizontal + 5 : 0
-    implicitWidth: compact ? Math.min(1560, screen.width - 32) : screen.width
+    implicitWidth: compact ? Math.min(1880, screen.width - 32) : screen.width
     implicitHeight: compact ? Math.min(520, screen.height - 80) : screen.height
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: compact ? "omaowl-workspace" : "omaowl-dashboard"
@@ -102,7 +108,8 @@ PanelWindow {
                     Label { text: "A little room for your day."; color: theme.muted; font.pixelSize: 13 }
                 }
                 Item { Layout.fillWidth: true }
-                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen; onClicked: { dash.insights = false; dash.assistantOpen = false; dash.connectionsOpen = false; } }
+                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen && !dash.messagesOpen; onClicked: { dash.messagesOpen = false; dash.insights = false; dash.assistantOpen = false; dash.connectionsOpen = false; } }
+                Action { text: "Messages"; dark: true; selected: dash.messagesOpen; onClicked: dash.messagesOpen=true }
                 Action { text: "Assistant"; dark: true; selected: dash.assistantOpen; onClicked: { dash.assistantOpen = true; dash.insights = false; dash.connectionsOpen = false; } }
                 Action { text: "Insights"; dark: true; selected: dash.insights && !dash.assistantOpen; onClicked: { dash.insights = true; dash.assistantOpen = false; dash.connectionsOpen = false; } }
                 Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.connectionsOpen=true; dash.assistantOpen=false; dash.insights=false; } }
@@ -111,7 +118,7 @@ PanelWindow {
                 Action { text: "×"; dark: true; onClicked: dash.close(); Accessible.name: "Close full screen" }
             }
             RowLayout {
-                visible: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen
+                visible: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen && !dash.messagesOpen
                 Layout.fillWidth: true; Layout.fillHeight: true; spacing: 18
                 Card {
                     color: theme.tasks; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 420
@@ -298,7 +305,16 @@ PanelWindow {
                     color: theme.mail; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 340
                     HeyMail { anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; store: dash.store }
                 }
+                Card {
+                    color: theme.mail; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 340
+                    MessageCard {
+                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35
+                        store: dash.store
+                        onShowAllRequested: dash.messagesOpen=true
+                    }
+                }
             }
+            MessagesPane { store: dash.store; visible: dash.messagesOpen; Layout.fillWidth: true; Layout.fillHeight: true; onSetupRequested: dash.connectionsOpen=true }
             ConnectionsPane { store: dash.store; visible: dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true; onTodoistSetupRequested: { dash.connectionsOpen=false; dash.accountOpen=true; } }
             AssistantPane { id: assistantPane; visible: dash.assistantOpen; Layout.fillWidth: true; Layout.fillHeight: true; store: dash.store }
             Rectangle {
