@@ -79,9 +79,10 @@ tab), plus the Grok Bot desktop app. Use list_agents to see them, ask_agent to g
 and agent_status to hear what one is doing or said. In ask_agent, agent is a running agent such
 as "codex 22", or just a kind such as "claude" (uses the only one running, or starts a new one;
 set new to true when the user asks for a new one, and call ask_agent straight away without
-listing first), or the name of a Grok Bot bot from the list in the desktop context such as
-"forge". Zeus is the Grok Bot orchestrator: use "grok_bot", which goes to Zeus, whenever the user
-says Grok Bot or names no bot, and another bot only when the user says its name. Never do an agent's task yourself. Write
+listing first), or the name of a Grok Bot bot from the list below.
+Use "grok_bot", which goes to the user's main Grok Bot bot (or the open chat if none is
+set), whenever the user says Grok Bot or names no bot, and another bot only when the user says its
+name. Never do an agent's task yourself. Write
 task as a complete instruction in the user's words; do not add steps they did not say. Use it when the user names
 an agent or asks for work your other tools cannot do, such as coding, files or research on this
 computer. The task is sent immediately, so say in a few words what you sent and to whom. Agents
@@ -180,14 +181,15 @@ def status():
     if not importlib.util.find_spec('websockets'):
         missing.append('websockets (run scripts/setup-grok-voice.py)')
     configured = bool(api_key())
-    return {'configured': configured, 'ready': configured and not missing,
+    return {'configured': configured, 'ready': configured and not missing, 'defaultBot': agents.default_bot(),
             'error': 'Missing: '+', '.join(missing) if missing else ''}
 
 
 def session_config(input_rate=RATE):
     return {'type': 'session.update', 'session': {
         'voice': 'ara', 'instructions': INSTRUCTIONS+'\nDesktop context (data): '+json.dumps(desktop_context())
-        + '\nGrok Bot bots (data): '+', '.join(bot['name'] for bot in agents.bots()), 'reasoning': {'effort': 'none'},
+        + '\nGrok Bot bots (data): '+', '.join(bot['name'] for bot in agents.bots())
+        + '\nMain Grok Bot bot (data): '+(agents.default_bot() or 'none set'), 'reasoning': {'effort': 'none'},
         'turn_detection': {'type': 'server_vad'}, 'tools': TOOLS,
         'audio': {'input': {'format': {'type': 'audio/pcm', 'rate': input_rate}},
                   'output': {'format': {'type': 'audio/pcm', 'rate': RATE}}}}}
@@ -384,8 +386,8 @@ class Session:
         task = agents.clean(args.get('task'))
         bot, named, hit = args.get('agent') == agents.GROK_BOT, None, None
         if bot:
-            # Falls back to the open chat if the orchestrator bot is not in the roster.
-            named = await asyncio.to_thread(agents.find_bot, agents.DEFAULT_BOT)
+            # No main bot set, or it is gone from the roster: the open chat gets the message.
+            named = await asyncio.to_thread(agents.find_bot, agents.default_bot())
         else:
             try:
                 hit = await asyncio.to_thread(agents.choose, args.get('agent', ''), args.get('new') is True)
@@ -698,6 +700,9 @@ def main():
         emit('config', **status())
     elif mode == 'save-key':
         save_key(json.loads(sys.stdin.readline(16384)).get('key'))
+        emit('config', **status())
+    elif mode == 'save-bot':
+        agents.save_default_bot(json.loads(sys.stdin.readline(16384)).get('bot'))
         emit('config', **status())
     elif mode == 'listen':
         asyncio.run(listen())

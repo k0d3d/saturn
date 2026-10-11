@@ -19,8 +19,8 @@ from pulse_voice import unlocked
 # Agent kinds Herdr can start in a fresh tab.
 KINDS = ('claude', 'codex', 'opencode', 'grok', 'gemini', 'hermes', 'cursor', 'pi', 'copilot')
 GROK_BOT = 'grok_bot'
-# The orchestrator bot: Grok Bot messages go to it unless the user names another bot.
-DEFAULT_BOT = 'zeus'
+# Holds the name of the user's main Grok Bot bot; messages go to it unless another bot is named.
+BOT_FILE = Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'oma-pulse/grok-bot'
 TASK_LIMIT = 2000
 WAIT_MS = 900000
 DONE = ('idle', 'done', 'blocked')
@@ -68,7 +68,7 @@ def describe():
     lines = [name(agent)+': '+agent['status']+(', "'+agent['title']+'"' if agent['title'] else '') for agent in roster()]
     names = [bot['name'] for bot in bots()]
     if names:
-        lines.append('Grok Bot app bots (use the bot name as agent, or grok_bot for Zeus, the orchestrator): '+', '.join(names))
+        lines.append('Grok Bot app bots (use the bot name as agent, or grok_bot for the main bot): '+', '.join(names))
     return '\n'.join(lines) or 'No agents are running. A new one can be started by kind: '+', '.join(KINDS)+'.'
 
 
@@ -184,6 +184,31 @@ def find_bot(spoken):
         if hits:
             raise AssistantError('Several Grok Bot bots match. Ask which one: '+', '.join(bot['name'] for bot in hits[:8]))
     return None
+
+
+def default_bot():
+    try:
+        return BOT_FILE.read_text().strip()[:60]
+    except OSError:
+        return ''
+
+
+def save_default_bot(spoken):
+    """Remember the main bot by its full name; an empty name clears it, so messages go to the open chat."""
+    if not isinstance(spoken, str) or len(spoken) > 60:
+        raise ValueError('Enter a Grok Bot bot name.')
+    saved = ''
+    if spoken.strip():
+        try:
+            bot = find_bot(spoken)
+        except AssistantError as error:
+            raise ValueError(str(error)) from None
+        if not bot:
+            raise ValueError('No Grok Bot bot is called "'+spoken.strip()+'". Open Grok Bot once so Pulse can see your bots.')
+        saved = bot['name']
+    BOT_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    BOT_FILE.write_text(saved+'\n')
+    return saved
 
 
 def grok_bot(task, bot=None):

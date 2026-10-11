@@ -52,6 +52,14 @@ ScrollView {
             Action { text: "Stop reply"; visible: pane.store.grokVoice.listeningEnabled; onClicked: pane.store.grokVoice.stopSpeaking() }
         }
         Copy { text: pane.store.grokVoice.error || (pane.store.grokVoice.configured ? pane.store.grokVoice.statusText : "Add your xAI key above. It is saved privately on this computer."); color: pane.store.grokVoice.error ? theme.urgent : theme.muted }
+        Copy { text: "Grok Bot · Main bot"; font.bold: true }
+        Copy { text: "“Tell Grok Bot to …” goes to this bot. Say another bot’s name to reach that one. Leave empty to use whichever chat is open."; color: theme.muted }
+        Entry { id: grokBot; placeholderText: pane.store.grokVoice.defaultBot ? "Main bot: "+pane.store.grokVoice.defaultBot : "Bot name, for example your orchestrator"; maximumLength: 60; enabled: !pane.store.grokVoice.settingsBusy; Accessible.name: "Main Grok Bot bot" }
+        Flow {
+            Layout.fillWidth: true; spacing: 8
+            Action { text: "Save main bot"; enabled: !!grokBot.text.trim() && !pane.store.grokVoice.settingsBusy; onClicked: { pane.store.grokVoice.saveBot(grokBot.text); grokBot.clear(); } }
+            Action { text: "Clear"; visible: !!pane.store.grokVoice.defaultBot; enabled: !pane.store.grokVoice.settingsBusy; onClicked: pane.store.grokVoice.saveBot("") }
+        }
         Copy { visible: pane.store.grokVoice.latencyMs >= 0; text: "Turn detected → playback: "+pane.store.grokVoice.latencyMs+" ms (excludes speech-end detection and speaker buffering)"; color: theme.muted }
         Copy { text: (pane.store.grokVoice.listeningEnabled ? (pane.store.grokVoice.duplex ? "Echo cancellation on · speak to interrupt a reply. " : "Echo cancellation unavailable · mic pauses during replies. ") : "Echo cancellation enables spoken interruption when available. ")+"Esc ends the chat and turns the microphone off; Shift+Esc also turns it off. Ends after 5 minutes, 1 minute idle, or when the desktop locks. Desktop actions use your existing Pulse assistant."; color: theme.muted }
         Copy { text: "Tasks"; font.bold: true }

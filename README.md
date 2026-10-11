@@ -205,7 +205,7 @@ commands, delete files, install software or send messages.
 It can hand work to the AI agents on this computer: the agents running in
 [Herdr](https://herdr.dev) (“ask Codex 22 to fix the failing tests”, “what are my
 agents doing?”, “have a new Claude look at this”) and the Grok Bot desktop app
-(“tell Forge to …” for a bot by name, or “tell Grok Bot to …” for Zeus, the orchestrator). The task is sent as soon as you say it, with a
+(“tell Grok Bot to …” for your main bot, set under **Connections → Grok Bot · Main bot**, or a bot’s own name to reach that one; with no main bot set, the open chat gets it). The task is sent as soon as you say it, with a
 notification showing exactly what went out and to whom. Pulse
 tells you when the agent finishes or needs approval; agents keep their own
 permission settings. A message to Grok Bot is typed into its window, so its

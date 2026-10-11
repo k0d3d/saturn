@@ -25,6 +25,8 @@ Item {
     property int retries: 0
     property string settingsMode: "check"
     property string keyToSave: ""
+    property string botToSave: ""
+    property string defaultBot: ""
     property bool settingsReceived: false
     readonly property bool settingsBusy: settings.running
     readonly property bool canStart: ready && !settingsBusy && !session.running
@@ -35,6 +37,10 @@ Item {
     function saveKey(value) {
         if(settings.running || listeningEnabled) return;
         error=""; settingsMode="save-key"; keyToSave=value.trim(); settingsReceived=false; settings.running=true;
+    }
+    function saveBot(value) {
+        if(settings.running) return;
+        error=""; settingsMode="save-bot"; botToSave=value.trim(); settingsReceived=false; settings.running=true;
     }
     function control(value) { if(session.running) session.write(JSON.stringify(value)+"\n"); }
     function saveWake(value) {
@@ -131,13 +137,14 @@ Item {
         stdinEnabled: true
         onStarted: {
             if(root.settingsMode === "save-key") settings.write(JSON.stringify({key:root.keyToSave})+"\n");
+            else if(root.settingsMode === "save-bot") settings.write(JSON.stringify({bot:root.botToSave})+"\n");
             root.keyToSave=""; settings.stdinEnabled=false;
         }
         stdout: SplitParser {
             onRead: function(line) {
                 try {
                     var result=JSON.parse(line); root.settingsReceived=true;
-                    if(result.event === "config") { root.configured=result.configured; root.ready=result.ready; root.error=result.error || ""; }
+                    if(result.event === "config") { root.configured=result.configured; root.ready=result.ready; root.defaultBot=result.defaultBot || ""; root.error=result.error || ""; }
                     else if(result.event === "error") root.error=result.error;
                 } catch(e) { root.error="Could not read Grok setup status."; }
             }

@@ -218,24 +218,40 @@ class RealtimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('Standup', json.loads(ws.sent[0]['item']['output'])['text'])
         self.assertFalse(json.loads(ws.sent[2]['item']['output'])['ok'])
 
+    def test_main_bot_is_saved_by_full_name_and_unknown_names_are_refused(self):
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(grok.agents, 'BOT_FILE', Path(folder)/'oma-pulse/grok-bot'), \
+             patch.object(grok.agents, 'bots', return_value=[{'id': 'b1', 'name': 'Forge'}, {'id': 'b3', 'name': 'Zeus (Chief of Staff)'}]):
+            self.assertEqual(grok.agents.default_bot(), '')
+            self.assertEqual(grok.agents.save_default_bot(' zeus '), 'Zeus (Chief of Staff)')
+            self.assertEqual(grok.status()['defaultBot'], 'Zeus (Chief of Staff)')
+            with self.assertRaises(ValueError):
+                grok.agents.save_default_bot('nobody')
+            self.assertEqual(grok.agents.default_bot(), 'Zeus (Chief of Staff)')
+            self.assertEqual(grok.agents.save_default_bot(''), '')
+            self.assertEqual(grok.agents.default_bot(), '')
+
     async def test_agent_task_is_sent_as_spoken_and_bad_requests_send_nothing(self):
         ws = Socket(); session = grok.Session(ws)
         with patch.object(grok, 'emit'), patch.object(grok.agents, 'announce') as announce, \
              patch.object(grok.agents, 'choose', side_effect=grok.AssistantError('No agent matches.')), \
              patch.object(grok.agents, 'grok_bot', return_value='Sent to the Grok Bot app.') as bot, \
              patch.object(grok.agents, 'bots', return_value=[{'id': 'b1', 'name': 'Forge'}, {'id': 'b2', 'name': 'Hermes'}, {'id': 'b3', 'name': 'Zeus (Chief of Staff)'}]), \
+             patch.object(grok.agents, 'default_bot', side_effect=['Zeus (Chief of Staff)', '']), \
              patch.object(grok.asyncio, 'create_subprocess_exec', new=AsyncMock()) as spawn:
             await session.tool({'name': 'ask_agent', 'call_id': 'c1', 'arguments': '{"agent":"grok_bot","task":"Say  hi"}'})
+            await session.tool({'name': 'ask_agent', 'call_id': 'c0', 'arguments': '{"agent":"grok_bot","task":"Open chat"}'})
             await session.tool({'name': 'ask_agent', 'call_id': 'c2', 'arguments': '{"agent":"the big one","task":"Fix it"}'})
             await session.tool({'name': 'ask_agent', 'call_id': 'c3', 'arguments': '{"agent":"grok_bot","task":""}'})
             await session.tool({'name': 'ask_agent', 'call_id': 'c4', 'arguments': '{"agent":"Forge","task":"Ship it"}'})
         bot.assert_any_call('Say hi', {'id': 'b3', 'name': 'Zeus (Chief of Staff)'})
+        bot.assert_any_call('Open chat', None)
         bot.assert_called_with('Ship it', {'id': 'b1', 'name': 'Forge'})
         announce.assert_called_with('Forge in Grok Bot', 'Ship it')
-        self.assertEqual(bot.call_count, 2)
+        self.assertEqual(bot.call_count, 3)
         spawn.assert_not_called()
         results = [json.loads(sent['item']['output'])['ok'] for sent in ws.sent if sent['type'] == 'conversation.item.create']
-        self.assertEqual(results, [True, False, False, True])
+        self.assertEqual(results, [True, True, False, False, True])
 
     async def test_agent_references_resolve_to_one_running_agent(self):
         roster = [{'pane': 'w1:p1', 'tab': '22', 'kind': 'codex', 'status': 'idle', 'title': 'Fix'},
