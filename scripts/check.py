@@ -10,6 +10,7 @@ for path in [root/'install.sh', *root.glob('scripts/*.sh'), *root.glob('bin/*')]
     subprocess.run(['bash', '-n', str(path)], check=True)
 for path in [root/'site/site.js', root/'scripts/build-site.cjs']:
     subprocess.run(['node', '--check', str(path)], check=True)
+assert (root/'skills/saturn/SKILL.md').read_text().startswith('---\nname: saturn')
 manifest = json.loads((root/'manifest.json').read_text())
 assert manifest['version'] == json.loads((root/'package.json').read_text())['version']
 for path in manifest['entryPoints'].values():

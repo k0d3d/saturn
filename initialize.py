@@ -121,14 +121,17 @@ def migrate(state):
     sync = state.get('sync', {})
     if not isinstance(sync, dict):
         raise ValueError('Unrecognized sync metadata')
-    result['sync'] = {
+    result['sync'] = dict(sync)
+    result['sync'].update({
         'providers': sync.get('providers', {}),
         'conflicts': sync.get('conflicts', []),
         'tombstones': sync.get('tombstones', []),
-    }
+    })
     for field in ['providers', 'conflicts', 'tombstones']:
         if not isinstance(result['sync'][field], (dict if field == 'providers' else list)):
             raise ValueError(f'Unrecognized sync {field}')
+    if 'audit' in result['sync'] and not isinstance(result['sync']['audit'], list):
+        raise ValueError('Unrecognized sync audit')
 
     insights = state.get('insights', {})
     if not isinstance(insights, dict):

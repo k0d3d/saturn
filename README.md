@@ -132,6 +132,15 @@ agent can update data without a shell restart. Invalid saved workspace data is p
 instead of silently overwritten. Credentials stay separately under
 `${XDG_CONFIG_HOME:-~/.config}/saturn/` with private permissions.
 
+## AI agent access
+
+An OpenCode skill lets an agent read and update Saturn's tasks and notes without touching `workspace.json` directly. Install it with `bash ~/.config/omarchy/plugins/k0d3d.saturn/scripts/install-opencode-skill.sh`; it links `skills/saturn/` into `~/.config/opencode/skills/saturn/`.
+
+- With the desktop shell running, use `saturn data <command>` (live, atomic, visible immediately).
+- Without the shell, use `python3 ~/.config/omarchy/plugins/k0d3d.saturn/scripts/workspace_api.py <command>` (locked, validated, backed up; refuses to write while the shell is live).
+
+Both print JSON. See `skills/saturn/SKILL.md` for the command reference, data shapes and safety rules. The shell records agent command names in `workspace.sync.audit` — never note bodies or credentials.
+
 ## Commands
 
 ```sh

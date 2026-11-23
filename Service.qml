@@ -107,6 +107,14 @@ Item {
         return rows;
     }
     function changed(save, tasksChanged) { revision++; if (tasksChanged) taskRevision++; if (save !== false && ready) saveTimer.restart(); }
+    function recordAgentAction(command) {
+        if (!ready) return;
+        if (!workspace.sync || typeof workspace.sync !== "object") workspace.sync = {};
+        if (!Array.isArray(workspace.sync.audit)) workspace.sync.audit = [];
+        workspace.sync.audit.push({at: Date.now(), command: String(command || "").slice(0, 60)});
+        workspace.sync.audit = workspace.sync.audit.slice(-200);
+        changed(false);
+    }
     function flush() {
         if (!ready || error || !Logic.needsWrite(workspace, lastPersisted)) return;
         var payload = Logic.serialize(workspace);
@@ -396,6 +404,30 @@ Item {
         }
         function notesOpen(): void { root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
         function notesSearch(query: string): void { root.notesQuery = query || ""; root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
+        function data(command: string, a: string, b: string, c: string, d: string): string {
+            var cmd = command || "get";
+            if (cmd === "get") return JSON.stringify(root.workspace);
+            if (cmd === "sync-status") return JSON.stringify(root.workspace.sync || {});
+            if (cmd === "tasks" || cmd === "add-task" || cmd === "complete-task" || cmd === "archive-task" || cmd === "restore-task" || cmd === "set-due") {
+                var tmap = {"tasks": a || "list", "add-task": "add", "complete-task": "complete",
+                            "archive-task": "archive", "restore-task": "restore", "set-due": "due"};
+                var target = tmap[cmd] || "list";
+                var taskArgs = cmd === "tasks" ? [b, c] : [a, b];
+                var result = root.tasks(target, taskArgs[0] || "", taskArgs[1] || "");
+                if (cmd !== "tasks" && cmd !== "list") root.recordAgentAction(cmd);
+                return result;
+            }
+            if (cmd === "notes" || cmd === "add-note" || cmd === "update-note" || cmd === "pin-note" || cmd === "archive-note" || cmd === "restore-note" || cmd === "search") {
+                var nmap = {"notes": a || "list", "add-note": "add", "update-note": "update",
+                            "pin-note": "pin", "archive-note": "archive", "restore-note": "restore", "search": "search"};
+                var ntarget = nmap[cmd] || "list";
+                var noteArgs = cmd === "notes" ? [b, c, d] : [a, b, c, d];
+                var noteResult = root.notes(ntarget, noteArgs[0] || "", noteArgs[1] || "", noteArgs[2] || "", noteArgs[3] || "");
+                if (cmd !== "notes" && cmd !== "search") root.recordAgentAction(cmd);
+                return noteResult;
+            }
+            return JSON.stringify({ok: false, error: "Unknown data command"});
+        }
         function status(): string {
             var panels = []; root.eachWindow(w => panels.push({screen: w.screen.name, expanded: w.expanded, dashboard: w.dashboardOpen, command: w.commandOpen, timerPopout: w.timerPopout.visible, tab: w.currentTab, hovered: w.hovered}));
             return JSON.stringify({ready: root.ready, error: root.error, schema: root.workspace.version, tasks: root.tasks.length, remaining: root.remainingTasks, archived: root.tasks.filter(t => t.archived).length, mailSource: root.mailSource, calendarSource: root.calendarSource, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});

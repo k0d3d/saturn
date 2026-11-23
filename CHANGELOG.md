@@ -13,6 +13,8 @@
 - Ships an `i18n/en.json` catalog for the new Notes UI strings.
 - Removed Messages, Assistant, Codex, Voxtype, Grok/Hey Saturn voice and the Blip/Beeper bridge; the command bar is now a local task/notes launcher. Assistant work moves to OpenCode.
 - Deprecated `messages`, `assistant`, `voice*` and `grok*` commands now print a pointer to OpenCode.
+- Added `saturn data` for live agent reads/writes and an offline, locked `workspace_api.py` fallback.
+- Added an installable OpenCode skill (`skills/saturn/SKILL.md`) with the data schema, command reference and safety rules.
 - Updated launcher, icon, app-menu entry, manifest, documentation and website copy for the new name.
 
 ## 0.7.1

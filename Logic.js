@@ -82,12 +82,13 @@ function migrate(s) {
 
     var sync = s.sync === undefined ? {} : s.sync;
     if (typeof sync !== "object" || Array.isArray(sync)) throw new Error("Unrecognized sync metadata");
-    out.sync = {
+    out.sync = Object.assign({}, sync, {
         providers: sync.providers === undefined ? {} : sync.providers,
         conflicts: sync.conflicts === undefined ? [] : sync.conflicts,
         tombstones: sync.tombstones === undefined ? [] : sync.tombstones
-    };
-    if (typeof out.sync.providers !== "object" || Array.isArray(out.sync.providers) || !Array.isArray(out.sync.conflicts) || !Array.isArray(out.sync.tombstones)) throw new Error("Unrecognized sync metadata");
+    });
+    if (typeof out.sync.providers !== "object" || Array.isArray(out.sync.providers) || !Array.isArray(out.sync.conflicts) || !Array.isArray(out.sync.tombstones)
+        || (out.sync.audit !== undefined && !Array.isArray(out.sync.audit))) throw new Error("Unrecognized sync metadata");
 
     var insights = s.insights === undefined ? {} : s.insights;
     if (typeof insights !== "object" || Array.isArray(insights)) throw new Error("Unrecognized insights");
