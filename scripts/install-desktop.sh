@@ -32,7 +32,7 @@ Icon=saturn
 Terminal=false
 Categories=Office;
 Keywords=productivity;focus;notes;calendar;mail;
-Actions=Dashboard;Command;Assistant;
+Actions=Dashboard;Command;
 
 [Desktop Action Dashboard]
 Name=Full workspace
@@ -41,10 +41,6 @@ Exec="{exe}" dashboard
 [Desktop Action Command]
 Name=Command bar
 Exec="{exe}" command
-
-[Desktop Action Assistant]
-Name=Assistant
-Exec="{exe}" assistant
 ''')
 PY
 if command -v update-desktop-database >/dev/null; then update-desktop-database "$data_dir/applications"; fi

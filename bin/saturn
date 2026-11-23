@@ -4,33 +4,29 @@ action="${1:-open}"
 case "$action" in
   tasks)
     shift
-    command="${1:-list}"
-    first="${2:-}"
-    second="${3:-}"
-    if ! command -v omarchy-shell >/dev/null; then
-      echo 'Saturn requires the Omarchy desktop shell.' >&2; exit 1
-    fi
-    exec omarchy-shell saturn tasks "$command" "$first" "$second"
+    sub="${1:-list}"; a="${2:-}"; b="${3:-}"; c="${4:-}"
+    exec_shell_command=(omarchy-shell saturn tasks "$sub" "$a" "$b" "$c")
     ;;
   notes)
     shift
-    sub="${1:-list}"
-    a="${2:-}"; b="${3:-}"; c="${4:-}"; d="${5:-}"
-    if ! command -v omarchy-shell >/dev/null; then
-      echo 'Saturn requires the Omarchy desktop shell.' >&2; exit 1
-    fi
-    exec omarchy-shell saturn notes "$sub" "$a" "$b" "$c" "$d"
+    sub="${1:-list}"; a="${2:-}"; b="${3:-}"; c="${4:-}"; d="${5:-}"
+    exec_shell_command=(omarchy-shell saturn notes "$sub" "$a" "$b" "$c" "$d")
     ;;
-  open|command|assistant|connections|messages|dashboard|close|status|toggle|notesOpen|voiceEnable|voiceWakeEnable|voiceDisable|voiceToggle|voiceStop|voiceStatus|grokStart|grokStop|grokStatus) ;;
+  open|notesOpen|command|connections|dashboard|close|status|toggle) exec_shell_command=(omarchy-shell saturn "$action") ;;
   --version) echo 'Saturn 0.8.0'; exit 0 ;;
   --help|-h)
-    echo 'Usage: saturn [open|notesOpen|command|assistant|connections|messages|dashboard|close|status|toggle'
+    echo 'Usage: saturn [open|notesOpen|command|connections|dashboard|close|status|toggle'
     echo '       tasks [list|add|complete|archive|restore|due] ...'
     echo '       notes [list|search|add|update|pin|archive|restore] ...]'
     exit 0 ;;
-  *) echo 'Unknown command. Run saturn --help.' >&2; exit 2 ;;
+  *)
+    if [[ "$action" == assistant || "$action" == messages || "$action" == voice* || "$action" == grok* ]]; then
+      echo "$action is no longer available in Saturn. Use OpenCode for assistant work." >&2
+      exit 3
+    fi
+    echo 'Unknown command. Run saturn --help.' >&2; exit 2 ;;
 esac
 if ! command -v omarchy-shell >/dev/null; then
   echo 'Saturn requires the Omarchy desktop shell.' >&2; exit 1
 fi
-exec omarchy-shell saturn "$action"
+exec "${exec_shell_command[@]}"

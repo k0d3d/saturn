@@ -18,6 +18,13 @@ Item {
 
     Theme { id: theme }
     Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
+    Connections {
+        target: store
+        function onNotesQueryChanged() {
+            pane.query = store.notesQuery;
+            searchField.text = store.notesQuery;
+        }
+    }
 
     readonly property var results: {
         store.revision;
@@ -97,7 +104,11 @@ Item {
         ColumnLayout {
             Layout.preferredWidth: 360; Layout.fillHeight: true; spacing: 12
             Copy { text: strings.t("notes.title"); font.pixelSize: 24; font.bold: true; Layout.fillWidth: false }
-            Field { id: searchField; Layout.fillWidth: true; placeholderText: strings.t("notes.search"); onTextChanged: pane.query = text }
+            Field {
+                id: searchField; Layout.fillWidth: true; placeholderText: strings.t("notes.search")
+                text: store.notesQuery
+                onTextChanged: { pane.query = text; store.notesQuery = text }
+            }
             RowLayout {
                 Btn { text: strings.t("notes.active"); selected: !pane.showArchived; onClicked: pane.showArchived = false }
                 Btn { text: strings.t("notes.archived"); selected: pane.showArchived; onClicked: pane.showArchived = true }

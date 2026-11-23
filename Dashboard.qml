@@ -18,23 +18,15 @@ PanelWindow {
     property bool pinned: false
     property bool awaitingEntry: false
     readonly property bool hovered: workspaceHover.hovered
-    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || connectionsOpen || notesOpen || (assistantOpen && assistantPane.editing)
+    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || connectionsOpen || notesOpen
     readonly property real uiScale: compact ? 0.82 : 1
     property string taskView: "Today"
     property bool insights: false
-    property bool assistantOpen: false
-    property bool messagesOpen: false
     property bool notesOpen: false
-    onNotesOpenChanged: if (notesOpen) { messagesOpen=false; assistantOpen=false; connectionsOpen=false; insights=false; }
-    onMessagesOpenChanged: if (messagesOpen) { notesOpen=false; assistantOpen=false; connectionsOpen=false; insights=false; store.messages.refresh(); }
-    readonly property bool messageViewActive: visible && (messagesOpen || connectionsOpen || (!insights && !assistantOpen && !notesOpen))
-    onMessageViewActiveChanged: store.messages.setViewActive(dash, messageViewActive)
-    Component.onDestruction: store.messages.setViewActive(dash, false)
-    Connections { target: dash.store.messages; function onOpened() { if(dash.visible) dash.close(); } }
+    onNotesOpenChanged: if (notesOpen) { connectionsOpen=false; insights=false; }
     property bool connectionsOpen: false
-    onAssistantOpenChanged: if (assistantOpen) { notesOpen=false; messagesOpen=false; connectionsOpen=false; Qt.callLater(() => assistantPane.focusInput()); }
-    onConnectionsOpenChanged: if (connectionsOpen) { notesOpen=false; messagesOpen=false; assistantOpen=false; insights=false; }
-    onInsightsChanged: if (insights) { notesOpen=false; messagesOpen=false; connectionsOpen=false; }
+    onConnectionsOpenChanged: if (connectionsOpen) { notesOpen=false; insights=false; }
+    onInsightsChanged: if (insights) { notesOpen=false; connectionsOpen=false; }
     property string calendarDate: store.calendarToday
     readonly property int calendarIndex: store.agendaDays.findIndex(d => d.date === dash.calendarDate)
     readonly property var calendarDay: store.agendaDays[Math.max(0, calendarIndex)] || null
@@ -57,7 +49,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: visible ? (compact ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive) : WlrKeyboardFocus.None
     color: "transparent"
-    onVisibleChanged: if (visible) { awaitingEntry = compact; page.forceActiveFocus(); if (assistantOpen) Qt.callLater(() => assistantPane.focusInput()); store.mail.refreshIfStale(); if(store.calendarSource === "google") store.googleCalendar.refreshIfStale(); if (compact && !pinned) leaveTimer.restart(); } else { store.assistant.cancelVoice(); }
+    onVisibleChanged: if (visible) { awaitingEntry = compact; page.forceActiveFocus(); store.mail.refreshIfStale(); if(store.calendarSource === "google") store.googleCalendar.refreshIfStale(); if (compact && !pinned) leaveTimer.restart(); }
     onEditingChanged: if (!editing && !hovered) leaveTimer.restart()
     Timer { id: leaveTimer; interval: dash.awaitingEntry ? 1200 : 700; onTriggered: if (dash.compact && dash.visible && !dash.hovered && !dash.pinned && !dash.editing) dash.close() }
     Rectangle { anchors.fill: parent; color: theme.background; radius: 0; border.width: dash.compact ? 1 : 0; border.color: theme.border }
@@ -117,18 +109,16 @@ PanelWindow {
                     Label { text: "A little room for your day."; color: theme.muted; font.pixelSize: 13 }
                 }
                 Item { Layout.fillWidth: true }
-                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen && !dash.messagesOpen && !dash.notesOpen; onClicked: { dash.messagesOpen = false; dash.notesOpen = false; dash.insights = false; dash.assistantOpen = false; dash.connectionsOpen = false; } }
+                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; } }
                 Action { text: "Notes"; dark: true; selected: dash.notesOpen; onClicked: dash.notesOpen=true }
-                Action { text: "Messages"; dark: true; selected: dash.messagesOpen; onClicked: dash.messagesOpen=true }
-                Action { text: "Assistant"; dark: true; selected: dash.assistantOpen; onClicked: { dash.assistantOpen = true; dash.insights = false; dash.connectionsOpen = false; } }
-                Action { text: "Insights"; dark: true; selected: dash.insights && !dash.assistantOpen; onClicked: { dash.insights = true; dash.assistantOpen = false; dash.connectionsOpen = false; } }
-                Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.connectionsOpen=true; dash.assistantOpen=false; dash.insights=false; } }
+                Action { text: "Insights"; dark: true; selected: dash.insights; onClicked: { dash.insights = true; dash.connectionsOpen = false; } }
+                Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.connectionsOpen=true; dash.insights=false; } }
                 Action { visible: dash.compact; text: dash.pinned ? "Pinned" : "Pin"; dark: true; selected: dash.pinned; onClicked: { dash.pinned = !dash.pinned; if (!dash.pinned && !dash.hovered) leaveTimer.restart(); } }
                 Action { text: dash.compact ? "⤢  Full screen" : "↙  Compact"; dark: true; onClicked: dash.compact ? dash.expandRequested() : dash.close() }
                 Action { text: "×"; dark: true; onClicked: dash.close(); Accessible.name: "Close full screen" }
             }
             RowLayout {
-                visible: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen && !dash.messagesOpen && !dash.notesOpen
+                visible: !dash.insights && !dash.connectionsOpen && !dash.notesOpen
                 Layout.fillWidth: true; Layout.fillHeight: true; spacing: 18
                 Card {
                     color: theme.tasks; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 420
@@ -331,21 +321,11 @@ PanelWindow {
                     color: theme.mail; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 340
                     HeyMail { anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; store: dash.store }
                 }
-                Card {
-                    color: theme.mail; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 340
-                    MessageCard {
-                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35
-                        store: dash.store
-                        onShowAllRequested: dash.messagesOpen=true
-                    }
-                }
             }
             NotesPane { id: notesPane; store: dash.store; visible: dash.notesOpen; Layout.fillWidth: true; Layout.fillHeight: true }
-            MessagesPane { store: dash.store; visible: dash.messagesOpen; Layout.fillWidth: true; Layout.fillHeight: true; onSetupRequested: dash.connectionsOpen=true }
             ConnectionsPane { store: dash.store; visible: dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true }
-            AssistantPane { id: assistantPane; visible: dash.assistantOpen; Layout.fillWidth: true; Layout.fillHeight: true; store: dash.store }
             Rectangle {
-                visible: dash.insights && !dash.assistantOpen && !dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.focus; radius: 0
+                visible: dash.insights && !dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.focus; radius: 0
                 ColumnLayout {
                     anchors.fill: parent; anchors.margins: 48; spacing: 24
                     Label { text: "The work you put in"; font.pixelSize: 34; font.weight: Font.DemiBold }

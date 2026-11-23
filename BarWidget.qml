@@ -8,7 +8,6 @@ import qs.Ui
 BarWidget {
     id: root
     moduleName: "k0d3d.saturn"
-    Theme { id: voiceTheme }
     readonly property var service: bar && bar.shell && typeof bar.shell.serviceFor === "function" ? bar.shell.serviceFor(moduleName) : null
     readonly property string screenName: QsWindow.window && QsWindow.window.screen ? QsWindow.window.screen.name : ""
     readonly property var panel: service ? service.windowForScreen(screenName) : null
@@ -17,9 +16,6 @@ BarWidget {
     property var remoteState: ({})
     readonly property bool opened: panel ? panel.expanded || panel.dashboardOpen || panel.commandOpen : !!remoteState.opened
     readonly property bool focusRunning: service ? service.focusState.running : !!remoteState.running
-    readonly property bool voiceEnabled: service ? service.voiceActive : !!remoteState.voiceEnabled
-    readonly property string voicePhase: service ? service.activeVoicePhase : (remoteState.voicePhase || "off")
-    readonly property string voiceName: service ? service.activeVoiceName : (remoteState.voiceName || "Grok live")
     function remoteAction(action) {
         Quickshell.execDetached(["omarchy-shell", "saturn", "barAction", screenName, action]);
         refreshAfterAction.restart();
@@ -47,7 +43,7 @@ BarWidget {
         iconComponent: Component { Image { source: Qt.resolvedUrl("assets/saturn.svg"); fillMode: Image.PreserveAspectFit } }
         active: root.opened || root.focusRunning
         interactive: true
-        tooltipText: (root.focusRunning ? "Saturn · " + (root.service ? root.service.timerText : root.remoteState.timer) : "Saturn · Tasks, focus, notes and calendar") + "\n" + root.voiceName + " · " + (root.voiceEnabled ? root.voicePhase : "off") + "\nEsc: end Grok · Ctrl+Alt+P: toggle Grok"
+        tooltipText: (root.focusRunning ? "Saturn · " + (root.service ? root.service.timerText : root.remoteState.timer) : "Saturn · Tasks, focus, notes and calendar") + "\nClick to pin · right-click for full screen"
         onTooltipHoveredChanged: {
             if (tooltipHovered && !root.opened) hoverTimer.restart();
             else hoverTimer.stop();
@@ -66,7 +62,6 @@ BarWidget {
             }
         }
     }
-    Rectangle { anchors.right:parent.right; anchors.bottom:parent.bottom; width:5; height:5; radius:3; color:root.voicePhase === "error" ? voiceTheme.urgent : voiceTheme.accent; visible:root.voiceEnabled }
     Timer {
         id: hoverTimer; interval: 240
         onTriggered: if (button.tooltipHovered && !root.opened) {

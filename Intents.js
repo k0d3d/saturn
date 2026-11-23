@@ -28,7 +28,7 @@ function parse(question, today) {
     var text = String(question).trim().replace(/[.!?]$/, ""), match;
     text = text.replace(/^(?:(?:can|could|would) you\s+)?(?:please\s+)?/i, "").replace(/,?\s+please$/i, "");
     text = text.replace(/^(?:hey\s+)?saturn[,\s]+/i, "");
-    match = text.match(/^(?:open|show|go to)\s+(?:(?:my|the|oma|saturn)\s+)?(saturn|workspace|messages|assistant|connections|insights|notepad|notes|dashboard)$/i);
+    match = text.match(/^(?:open|show|go to)\s+(?:(?:my|the|oma|saturn)\s+)?(saturn|workspace|connections|insights|notepad|notes|dashboard)$/i);
     if (match) return action("show_pulse",/^(saturn|dashboard|notepad|notes)$/i.test(match[1]) ? "workspace" : match[1].toLowerCase());
     if (/^(?:close|hide|dismiss)\s+(?:oma\s+)?saturn$/i.test(text)) return action("show_pulse","close");
     if (/^(?:mute|unmute)(?:\s+(?:the\s+)?(?:sound|audio|volume))?$/i.test(text)) return action("mute_audio",/^unmute/i.test(text) ? "off" : "on");

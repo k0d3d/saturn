@@ -11,6 +11,8 @@
 - Added local due dates (`tomorrow`, `today`, `next Mon`, `YYYY-MM-DD`) and a `saturn tasks` shell command.
 - Added a tagged, dated and searchable Notes library alongside the daily Notepad, with pin/archive/restore and a `saturn notes` shell command.
 - Ships an `i18n/en.json` catalog for the new Notes UI strings.
+- Removed Messages, Assistant, Codex, Voxtype, Grok/Hey Saturn voice and the Blip/Beeper bridge; the command bar is now a local task/notes launcher. Assistant work moves to OpenCode.
+- Deprecated `messages`, `assistant`, `voice*` and `grok*` commands now print a pointer to OpenCode.
 - Updated launcher, icon, app-menu entry, manifest, documentation and website copy for the new name.
 
 ## 0.7.1
