@@ -37,6 +37,7 @@ test("v2 fields are validated and invalid due dates are dropped", () => {
   let restored = context.parse(JSON.stringify(state));
   assert.equal(restored.tasks[0].due, null);
   assert.equal(restored.notesV2[0].date, "2026-11-24");
+  assert.equal(restored.notesV2[0].pinned, false);
   state.tasks[0].due = "2026-11-25";
   restored = context.parse(JSON.stringify(state));
   assert.equal(restored.tasks[0].due, "2026-11-25");

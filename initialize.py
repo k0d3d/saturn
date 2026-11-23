@@ -96,8 +96,10 @@ def migrate(state):
         note.setdefault('createdAt', 0)
         note.setdefault('updatedAt', 0)
         note.setdefault('archived', False)
+        note.setdefault('pinned', False)
         _string_list(note['tags'], 'note tags')
-        if not _finite(note['createdAt']) or not _finite(note['updatedAt']) or not isinstance(note['archived'], bool):
+        if (not _finite(note['createdAt']) or not _finite(note['updatedAt'])
+                or not isinstance(note['archived'], bool) or not isinstance(note['pinned'], bool)):
             raise ValueError('Unrecognized note metadata')
         library.append(note)
     result['notesV2'] = library

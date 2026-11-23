@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import "Logic.js" as Logic
 import "Dates.js" as Dates
+import "Notes.js" as Notes
 
 Item {
     id: root
@@ -93,8 +94,9 @@ Item {
         if(view === "close") { eachWindow(w => { w.commandOpen=false; w.dashboardOpen=false; w.close(); }); return; }
         eachWindow(w => {
             w.workspacePanel.messagesOpen=false; w.workspacePanel.assistantOpen=false;
-            w.workspacePanel.connectionsOpen=false; w.workspacePanel.insights=false;
-            if(view === "messages") w.workspacePanel.messagesOpen=true;
+            w.workspacePanel.connectionsOpen=false; w.workspacePanel.insights=false; w.workspacePanel.notesOpen=false;
+            if(view === "notes") w.workspacePanel.notesOpen=true;
+            else if(view === "messages") w.workspacePanel.messagesOpen=true;
             else if(view === "assistant") w.workspacePanel.assistantOpen=true;
             else if(view === "connections") w.workspacePanel.connectionsOpen=true;
             else if(view === "insights") w.workspacePanel.insights=true;
@@ -204,6 +206,42 @@ Item {
     function moveNoteDay(offset) {
         var d = new Date(noteDay + "T12:00:00"); d.setDate(d.getDate() + offset);
         noteDay = Logic.dayKey(d.getTime());
+    }
+    function findNote(id) { return workspace.notesV2.find(n => n.id === id); }
+    function addNote(title, body, tags, date) {
+        if (!ready || error) return "";
+        var note = Notes.make({title: title, body: body, tags: tags, date: date}, Date.now());
+        workspace.notesV2.unshift(note);
+        changed();
+        return note.id;
+    }
+    function updateNote(id, title, body, tags, date) {
+        var index = workspace.notesV2.findIndex(n => n.id === id);
+        if (index < 0 || !ready || error) return false;
+        workspace.notesV2[index] = Notes.update(workspace.notesV2[index],
+            {title: title, body: body, tags: tags, date: date}, Date.now());
+        changed();
+        return true;
+    }
+    function toggleNotePin(id) {
+        var note = findNote(id);
+        if (!note || !ready || error) return;
+        note.pinned = !note.pinned; note.updatedAt = Date.now(); changed();
+    }
+    function archiveNote(id) {
+        var note = findNote(id);
+        if (!note || !ready || error || note.archived) return;
+        note.archived = true; note.updatedAt = Date.now(); changed();
+        notice = "Note archived · undo from the library.";
+    }
+    function restoreNote(id) {
+        var note = findNote(id);
+        if (!note || !ready || error || !note.archived) return;
+        note.archived = false; note.updatedAt = Date.now(); changed();
+        notice = "Note restored.";
+    }
+    function searchNotes(query, limit) {
+        return Notes.search(workspace, query || "", limit || 80);
     }
     function chooseFocus(title, duration) {
         if (!ready || error) return;
@@ -354,6 +392,24 @@ Item {
             if (cmd === "due") { root.setTaskDue(first, second); return JSON.stringify({ok: true, id: first, due: second || null}); }
             return JSON.stringify({ok: false, error: "Unknown task command"});
         }
+        function notes(command: string, a: string, b: string, c: string, d: string): string {
+            var cmd = command || "list";
+            if (cmd === "list") return JSON.stringify(root.workspace.notesV2);
+            if (cmd === "search") return JSON.stringify(root.searchNotes(a, b ? Number(b) : 80));
+            if (cmd === "add") return JSON.stringify({ok: !!a, id: a ? root.addNote(a, b, c, d) : ""});
+            if (cmd === "update") return JSON.stringify({ok: root.updateNote(a, b, c, d)});
+            if (cmd === "pin") {
+                if (Notes.isDaily(a)) return JSON.stringify({ok: false, error: "Daily notes cannot be pinned"});
+                root.toggleNotePin(a); return JSON.stringify({ok: true, id: a});
+            }
+            if (cmd === "archive" || cmd === "restore") {
+                if (Notes.isDaily(a)) return JSON.stringify({ok: false, error: "Daily notes cannot be archived"});
+                if (cmd === "archive") root.archiveNote(a); else root.restoreNote(a);
+                return JSON.stringify({ok: true, id: a});
+            }
+            return JSON.stringify({ok: false, error: "Unknown note command"});
+        }
+        function notesOpen(): void { root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
         function status(): string {
             var panels = []; root.eachWindow(w => panels.push({screen: w.screen.name, expanded: w.expanded, dashboard: w.dashboardOpen, command: w.commandOpen, timerPopout: w.timerPopout.visible, tab: w.currentTab, hovered: w.hovered}));
             return JSON.stringify({ready: root.ready, error: root.error, schema: root.workspace.version, tasks: root.tasks.length, remaining: root.remainingTasks, archived: root.tasks.filter(t => t.archived).length, mailSource: root.mailSource, calendarSource: root.calendarSource, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});

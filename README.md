@@ -128,6 +128,12 @@ Tasks are local to this computer. No account is needed and nothing is uploaded.
   `saturn tasks complete <id>`, `saturn tasks archive <id>`,
   `saturn tasks restore <id>` and `saturn tasks due <id> 2026-11-24` work from the shell.
 
+## Notes
+
+The Notepad card stays as quick daily capture. The **Notes** tab adds a library of titled, tagged, dated notes with full-text search across both the library and daily notes. Notes can be pinned, archived and restored; everything is stored locally in `~/.local/share/saturn/workspace.json`.
+
+From the shell: `saturn notes list`, `saturn notes search "voice"`, `saturn notes add "Title" "Body" "tag1,tag2" 2026-11-24`, `saturn notes update <id> "New title" "New body" "tags"`, `saturn notes pin <id>`, `saturn notes archive <id>`, `saturn notes restore <id>`. `saturn notesOpen` shows the library in the workspace.
+
 ## Calendar
 
 Use ‹ / › in the Events card to switch days, and **Back to today** to reset.

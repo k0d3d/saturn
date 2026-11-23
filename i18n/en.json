@@ -1,0 +1,20 @@
+{
+  "notes.title": "Notes",
+  "notes.search": "Search titles, tags, text and dates…",
+  "notes.new": "New note",
+  "notes.active": "Active",
+  "notes.archived": "Archived",
+  "notes.empty": "No notes found. Try another search or create one.",
+  "notes.untitled": "Untitled note",
+  "notes.titleField": "Title",
+  "notes.tagsField": "Tags (comma separated)",
+  "notes.dateField": "Date (YYYY-MM-DD)",
+  "notes.bodyField": "Write a note…",
+  "notes.save": "Save",
+  "notes.pin": "Pin",
+  "notes.unpin": "Unpin",
+  "notes.archive": "Archive",
+  "notes.restore": "Restore",
+  "notes.openDaily": "Open in Notepad",
+  "notes.count": {"one": "%1 note", "other": "%1 notes"}
+}

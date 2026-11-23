@@ -9,6 +9,8 @@
 - Tasks are now local-only: Todoist, reminders and the task-source switch were removed.
 - Added Today / Upcoming / All / Completed / Archive views; completed tasks stay visible and archived tasks can be restored.
 - Added local due dates (`tomorrow`, `today`, `next Mon`, `YYYY-MM-DD`) and a `saturn tasks` shell command.
+- Added a tagged, dated and searchable Notes library alongside the daily Notepad, with pin/archive/restore and a `saturn notes` shell command.
+- Ships an `i18n/en.json` catalog for the new Notes UI strings.
 - Updated launcher, icon, app-menu entry, manifest, documentation and website copy for the new name.
 
 ## 0.7.1

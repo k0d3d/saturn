@@ -18,21 +18,23 @@ PanelWindow {
     property bool pinned: false
     property bool awaitingEntry: false
     readonly property bool hovered: workspaceHover.hovered
-    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || connectionsOpen || (assistantOpen && assistantPane.editing)
+    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || connectionsOpen || notesOpen || (assistantOpen && assistantPane.editing)
     readonly property real uiScale: compact ? 0.82 : 1
     property string taskView: "Today"
     property bool insights: false
     property bool assistantOpen: false
     property bool messagesOpen: false
-    onMessagesOpenChanged: if (messagesOpen) { assistantOpen=false; connectionsOpen=false; insights=false; store.messages.refresh(); }
-    readonly property bool messageViewActive: visible && (messagesOpen || connectionsOpen || (!insights && !assistantOpen))
+    property bool notesOpen: false
+    onNotesOpenChanged: if (notesOpen) { messagesOpen=false; assistantOpen=false; connectionsOpen=false; insights=false; }
+    onMessagesOpenChanged: if (messagesOpen) { notesOpen=false; assistantOpen=false; connectionsOpen=false; insights=false; store.messages.refresh(); }
+    readonly property bool messageViewActive: visible && (messagesOpen || connectionsOpen || (!insights && !assistantOpen && !notesOpen))
     onMessageViewActiveChanged: store.messages.setViewActive(dash, messageViewActive)
     Component.onDestruction: store.messages.setViewActive(dash, false)
     Connections { target: dash.store.messages; function onOpened() { if(dash.visible) dash.close(); } }
     property bool connectionsOpen: false
-    onAssistantOpenChanged: if (assistantOpen) { messagesOpen=false; connectionsOpen=false; Qt.callLater(() => assistantPane.focusInput()); }
-    onConnectionsOpenChanged: if (connectionsOpen) { messagesOpen=false; assistantOpen=false; insights=false; }
-    onInsightsChanged: if (insights) { messagesOpen=false; connectionsOpen=false; }
+    onAssistantOpenChanged: if (assistantOpen) { notesOpen=false; messagesOpen=false; connectionsOpen=false; Qt.callLater(() => assistantPane.focusInput()); }
+    onConnectionsOpenChanged: if (connectionsOpen) { notesOpen=false; messagesOpen=false; assistantOpen=false; insights=false; }
+    onInsightsChanged: if (insights) { notesOpen=false; messagesOpen=false; connectionsOpen=false; }
     property string calendarDate: store.calendarToday
     readonly property int calendarIndex: store.agendaDays.findIndex(d => d.date === dash.calendarDate)
     readonly property var calendarDay: store.agendaDays[Math.max(0, calendarIndex)] || null
@@ -115,7 +117,8 @@ PanelWindow {
                     Label { text: "A little room for your day."; color: theme.muted; font.pixelSize: 13 }
                 }
                 Item { Layout.fillWidth: true }
-                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen && !dash.messagesOpen; onClicked: { dash.messagesOpen = false; dash.insights = false; dash.assistantOpen = false; dash.connectionsOpen = false; } }
+                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen && !dash.messagesOpen && !dash.notesOpen; onClicked: { dash.messagesOpen = false; dash.notesOpen = false; dash.insights = false; dash.assistantOpen = false; dash.connectionsOpen = false; } }
+                Action { text: "Notes"; dark: true; selected: dash.notesOpen; onClicked: dash.notesOpen=true }
                 Action { text: "Messages"; dark: true; selected: dash.messagesOpen; onClicked: dash.messagesOpen=true }
                 Action { text: "Assistant"; dark: true; selected: dash.assistantOpen; onClicked: { dash.assistantOpen = true; dash.insights = false; dash.connectionsOpen = false; } }
                 Action { text: "Insights"; dark: true; selected: dash.insights && !dash.assistantOpen; onClicked: { dash.insights = true; dash.assistantOpen = false; dash.connectionsOpen = false; } }
@@ -125,7 +128,7 @@ PanelWindow {
                 Action { text: "×"; dark: true; onClicked: dash.close(); Accessible.name: "Close full screen" }
             }
             RowLayout {
-                visible: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen && !dash.messagesOpen
+                visible: !dash.insights && !dash.assistantOpen && !dash.connectionsOpen && !dash.messagesOpen && !dash.notesOpen
                 Layout.fillWidth: true; Layout.fillHeight: true; spacing: 18
                 Card {
                     color: theme.tasks; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 420
@@ -337,6 +340,7 @@ PanelWindow {
                     }
                 }
             }
+            NotesPane { id: notesPane; store: dash.store; visible: dash.notesOpen; Layout.fillWidth: true; Layout.fillHeight: true }
             MessagesPane { store: dash.store; visible: dash.messagesOpen; Layout.fillWidth: true; Layout.fillHeight: true; onSetupRequested: dash.connectionsOpen=true }
             ConnectionsPane { store: dash.store; visible: dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true }
             AssistantPane { id: assistantPane; visible: dash.assistantOpen; Layout.fillWidth: true; Layout.fillHeight: true; store: dash.store }

@@ -57,8 +57,9 @@ function migrate(s) {
         if (note.createdAt === undefined) note.createdAt = 0;
         if (note.updatedAt === undefined) note.updatedAt = 0;
         if (note.archived === undefined) note.archived = false;
+        if (note.pinned === undefined) note.pinned = false;
         stringList(note.tags, "note tags");
-        if (!finite(note.createdAt) || !finite(note.updatedAt) || typeof note.archived !== "boolean") throw new Error("Unrecognized note metadata");
+        if (!finite(note.createdAt) || !finite(note.updatedAt) || typeof note.archived !== "boolean" || typeof note.pinned !== "boolean") throw new Error("Unrecognized note metadata");
         return note;
     });
 

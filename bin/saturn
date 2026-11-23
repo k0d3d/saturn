@@ -12,10 +12,21 @@ case "$action" in
     fi
     exec omarchy-shell saturn tasks "$command" "$first" "$second"
     ;;
-  open|command|assistant|connections|messages|dashboard|close|status|toggle|voiceEnable|voiceWakeEnable|voiceDisable|voiceToggle|voiceStop|voiceStatus|grokStart|grokStop|grokStatus) ;;
+  notes)
+    shift
+    sub="${1:-list}"
+    a="${2:-}"; b="${3:-}"; c="${4:-}"; d="${5:-}"
+    if ! command -v omarchy-shell >/dev/null; then
+      echo 'Saturn requires the Omarchy desktop shell.' >&2; exit 1
+    fi
+    exec omarchy-shell saturn notes "$sub" "$a" "$b" "$c" "$d"
+    ;;
+  open|command|assistant|connections|messages|dashboard|close|status|toggle|notesOpen|voiceEnable|voiceWakeEnable|voiceDisable|voiceToggle|voiceStop|voiceStatus|grokStart|grokStop|grokStatus) ;;
   --version) echo 'Saturn 0.8.0'; exit 0 ;;
   --help|-h)
-    echo 'Usage: saturn [open|command|assistant|connections|messages|dashboard|close|status|toggle|tasks [list|add|complete|archive|restore|due] ...]'
+    echo 'Usage: saturn [open|notesOpen|command|assistant|connections|messages|dashboard|close|status|toggle'
+    echo '       tasks [list|add|complete|archive|restore|due] ...'
+    echo '       notes [list|search|add|update|pin|archive|restore] ...]'
     exit 0 ;;
   *) echo 'Unknown command. Run saturn --help.' >&2; exit 2 ;;
 esac
