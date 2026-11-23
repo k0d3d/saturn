@@ -176,12 +176,15 @@ def apply_incoming(state, meta, body):
         else:
             target = state.get('notesV2', [])
         item = next((i for i in target if i.get('id') == item_id), None)
-        if item:
+        changed = False
+        if item and not item.get('archived'):
             item['archived'] = True
+            changed = True
         if not any(t.get('id') == item_id for t in sync.setdefault('tombstones', [])):
             sync['tombstones'].append({'id': item_id, 'kind': kind, 'at': updated})
+            changed = True
         base[item_id] = updated
-        return False
+        return changed
     if kind == 'daily':
         day = meta.get('date', '')
         if not SAFE_DATE.match(day):
