@@ -77,11 +77,12 @@ Item {
     }
     component Btn: AbstractButton {
         id: button
+        property bool selected: false
         implicitHeight: 36
         implicitWidth: Math.max(44, label.implicitWidth + 20)
         hoverEnabled: true; focusPolicy: Qt.NoFocus
-        background: Rectangle { radius: 3; color: button.hovered ? theme.hover : theme.raised; opacity: button.enabled ? 1 : 0.4 }
-        contentItem: Copy { id: label; text: button.text; color: theme.text; wrapMode: Text.NoWrap }
+        background: Rectangle { radius: 3; color: button.selected ? theme.accent : button.hovered ? theme.hover : theme.raised; opacity: button.enabled ? 1 : 0.4 }
+        contentItem: Copy { id: label; text: button.text; color: button.selected ? theme.background : theme.text; wrapMode: Text.NoWrap }
     }
     component Field: TextField {
         color: theme.text; font.family: theme.font; font.pixelSize: 15
@@ -98,18 +99,11 @@ Item {
             Copy { text: strings.t("notes.title"); font.pixelSize: 24; font.bold: true; Layout.fillWidth: false }
             Field { id: searchField; Layout.fillWidth: true; placeholderText: strings.t("notes.search"); onTextChanged: pane.query = text }
             RowLayout {
-                Btn {
-                    text: strings.t("notes.active")
-                    onClicked: pane.showArchived = false
-                    background: Rectangle { radius: 3; color: !pane.showArchived ? theme.accent : theme.raised }
-                }
-                Btn {
-                    text: strings.t("notes.archived")
-                    onClicked: pane.showArchived = true
-                    background: Rectangle { radius: 3; color: pane.showArchived ? theme.accent : theme.raised }
-                }
+                Btn { text: strings.t("notes.active"); selected: !pane.showArchived; onClicked: pane.showArchived = false }
+                Btn { text: strings.t("notes.archived"); selected: pane.showArchived; onClicked: pane.showArchived = true }
                 Btn { text: strings.t("notes.new"); onClicked: pane.create() }
-                Copy { text: strings.tn("notes.count", pane.results.length); color: theme.muted; font.pixelSize: 11; horizontalAlignment: Text.AlignRight }
+                Item { Layout.fillWidth: true }
+                Copy { Layout.fillWidth: false; text: strings.tn("notes.count", pane.results.length); color: theme.muted; font.pixelSize: 11; horizontalAlignment: Text.AlignRight }
             }
             ListView {
                 Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 4
