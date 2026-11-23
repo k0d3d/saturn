@@ -50,7 +50,7 @@ deletion is intentionally disabled until safe ownership and conflict checks
 are available. Calendar events are not mirrored into the Markdown vault.
 Server responses are size-bounded and titles are rendered as plain text.
 
-Google Calendar two-way writes require reconnecting once after upgrading to 0.8 so the app receives the `calendar.events` scope instead of the older read-only scope.
+Google Calendar two-way writes need both the `calendar.events` scope (to write events) and `calendar.readonly` (to read calendar metadata such as the timezone). Connect once after upgrading to 0.8 to grant both; the older token only had read-only access.
 
 ## What syncs
 

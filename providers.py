@@ -24,7 +24,7 @@ PROVIDERS = {
     'imap': (None, None),
     'caldav': (None, None),
     'gmail': ('https://oauth2.googleapis.com/token', 'https://www.googleapis.com/auth/gmail.modify'),
-    'google-calendar': ('https://oauth2.googleapis.com/token', 'https://www.googleapis.com/auth/calendar.events'),
+    'google-calendar': ('https://oauth2.googleapis.com/token', 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly'),
     'outlook': ('https://login.microsoftonline.com/common/oauth2/v2.0/token', 'offline_access https://graph.microsoft.com/Mail.ReadWrite'),
 }
 

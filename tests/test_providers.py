@@ -12,6 +12,10 @@ class ProviderTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory()
         self.env=patch.dict(os.environ,{'XDG_CONFIG_HOME':self.temp.name});self.env.start()
     def tearDown(self):self.env.stop();self.temp.cleanup()
+    def test_calendar_scope_covers_events_and_metadata(self):
+        scope=p.PROVIDERS['google-calendar'][1]
+        self.assertIn('calendar.events',scope)
+        self.assertIn('calendar.readonly',scope)
     def test_private_tokens_and_public_status(self):
         p.save_config('gmail',{'client_id':'client','refresh_token':'private','access_token':'secret'})
         path=p.config_path('gmail')
