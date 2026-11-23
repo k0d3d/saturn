@@ -45,6 +45,24 @@ test("v2 fields are validated and invalid due dates are dropped", () => {
   state.tasks[0].archived = "yes";
   assert.throws(() => context.parse(JSON.stringify(state)));
 });
+test("task views keep completed work visible and hide archived items", () => {
+  const today = "2026-11-23";
+  const tasks = [
+    { id: "a", title: "Today", done: false, completedAt: 0, due: today, archived: false },
+    { id: "b", title: "Tomorrow", done: false, completedAt: 0, due: "2026-11-24", archived: false },
+    { id: "c", title: "Undated", done: false, completedAt: 0, due: null, archived: false },
+    { id: "d", title: "Done", done: true, completedAt: 20, due: today, archived: false },
+    { id: "e", title: "Old done", done: true, completedAt: 10, due: null, archived: false },
+    { id: "f", title: "Archived", done: false, completedAt: 0, due: today, archived: true },
+  ];
+  const ids = (view) => context.tasksInView(tasks, view, today).map((t) => t.id).join(",");
+  assert.equal(ids("Today"), "a,c");
+  assert.equal(ids("Upcoming"), "b");
+  assert.equal(ids("All"), "a,b,c");
+  assert.equal(ids("Completed"), "d,e");
+  assert.equal(ids("Archive"), "f");
+});
+
 test("own writes are ignored but external edits are adopted", () => {
   const state = context.fresh();
   const payload = context.serialize(state);
@@ -70,12 +88,11 @@ test("an external edit wins over a pending local save", () => {
   assert.equal(context.needsWrite(adopted, context.serialize(adopted)), false); // queued flush is a no-op
   assert.equal(adopted.tasks[0].id, "agent");
 });
-test("stored task source is preserved and unknown source is rejected", () => {
+test("legacy task source is preserved but no longer selects a provider", () => {
   const state = context.fresh();
-  state.taskSource = "local";
-  assert.equal(context.parse(JSON.stringify(state)).taskSource, "local");
-  state.taskSource = "invalid";
-  assert.throws(() => context.parse(JSON.stringify(state)));
+  state.taskSource = "todoist";
+  const restored = context.parse(JSON.stringify(state));
+  assert.equal(restored.taskSource, "todoist"); // kept as harmless legacy metadata
 });
 test("suspend never counts as active focus time", () => {
   const state = context.fresh();

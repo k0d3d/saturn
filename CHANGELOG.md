@@ -6,6 +6,9 @@
 - Migrated local data to `~/.local/share/saturn/` with schema 2: dated/archivable tasks, a tagged note library, sync metadata and an insights hook. Original data is backed up, never deleted.
 - Migrated private credentials from `~/.config/omaowl` and `~/.config/oma-pulse` into `~/.config/saturn`, preserving permissions.
 - The shell now watches the workspace file and adopts external edits without echoing its own atomic writes back.
+- Tasks are now local-only: Todoist, reminders and the task-source switch were removed.
+- Added Today / Upcoming / All / Completed / Archive views; completed tasks stay visible and archived tasks can be restored.
+- Added local due dates (`tomorrow`, `today`, `next Mon`, `YYYY-MM-DD`) and a `saturn tasks` shell command.
 - Updated launcher, icon, app-menu entry, manifest, documentation and website copy for the new name.
 
 ## 0.7.1

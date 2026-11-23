@@ -73,10 +73,9 @@ function migrate(s) {
     if (!finite(duration) || !finite(elapsed)) throw new Error("Unrecognized focus state");
     out.focus = Object.assign({}, focus, {running: false});
 
-    ["taskSource", "mailSource", "calendarSource"].forEach(function(key) {
+    ["mailSource", "calendarSource"].forEach(function(key) {
         if (s[key] !== undefined && typeof s[key] !== "string") throw new Error("Unrecognized " + key);
     });
-    if (s.taskSource !== undefined && ["local", "todoist"].indexOf(s.taskSource) < 0) throw new Error("Unrecognized task source");
     if (s.mailSource !== undefined && ["hey", "gmail", "outlook", "imap", "off"].indexOf(s.mailSource) < 0) throw new Error("Unrecognized mail source");
     if (s.calendarSource !== undefined && ["omacal", "google", "off"].indexOf(s.calendarSource) < 0) throw new Error("Unrecognized calendar source");
 
@@ -107,6 +106,14 @@ function shouldAdopt(incoming, lastPersisted, ready, error) {
 }
 function needsWrite(state, lastPersisted) {
     return serialize(state) !== lastPersisted;
+}
+function tasksInView(tasks, view, today) {
+    var all = Array.isArray(tasks) ? tasks : [];
+    if (view === "Completed") return all.filter(t => t.done && !t.archived).sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
+    if (view === "Archive") return all.filter(t => t.archived).sort((a,b) => (b.archivedAt || 0) - (a.archivedAt || 0));
+    if (view === "Upcoming") return all.filter(t => !t.archived && !t.done && t.due && t.due > today).sort((a,b) => a.due.localeCompare(b.due));
+    if (view === "Today") return all.filter(t => !t.archived && !t.done && (!t.due || t.due <= today)).sort((a,b) => (a.due || "9999").localeCompare(b.due || "9999"));
+    return all.filter(t => !t.archived && !t.done);
 }
 function advance(s, delta, now) {
     if (!s.focus.running) return "idle";

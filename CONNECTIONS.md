@@ -4,7 +4,7 @@ Open **Connections** in Saturn (or run `saturn connections`). Selections are sav
 
 | Panel | Choices | Setup |
 | --- | --- | --- |
-| Tasks | Local, Todoist | Local needs no account; Todoist uses your API key |
+| Tasks | Local only | Stored on this computer; no account needed |
 | Mail | HEY, Gmail, Outlook, IMAP, Off | HEY CLI login, or provider OAuth below |
 | Calendar | OmaCal, Google Calendar, Off | Existing OmaCal feed, or Google OAuth below |
 
@@ -46,7 +46,7 @@ Connecting verifies login and mailbox access before saving. The app password use
 - **Gmail / Outlook:** up to 20 unread inbox messages; refresh every two minutes and on reopening when stale. Click a message to open it in the provider. Mark read and Undo are verified with the remote service before the list changes. This is an inbox preview, not a full email client.
 - **Google Calendar:** one selected calendar, today plus seven days, with recurring occurrences and all-day/multi-day events. Dates and clock labels use that calendar’s timezone. Clicking an event opens the full Google Calendar day. No OmaCal install is required for this source.
 - **HEY / OmaCal:** existing behavior is preserved. HEY uses its CLI and live watch; OmaCal supplies its own published calendar feed.
-- **Local tasks:** stay on your machine and are never uploaded when switching to Todoist.
+- **Local tasks:** stay on your machine. Due dates, completion and archiving are stored in the local workspace.
 
 OAuth tokens and client settings stay in `${XDG_CONFIG_HOME:-~/.config}/saturn/connections/` with private directory and file permissions (700/600). They are not included in workspace exports, process arguments, the website or releases. **Disconnect** deletes the selected local connection file; revoke the app in Google/Microsoft account settings to remove server-side consent. Errors preserve your existing connection rather than replacing it with a failed sign-in.
 

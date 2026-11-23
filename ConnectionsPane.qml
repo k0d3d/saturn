@@ -5,7 +5,6 @@ import QtQuick.Layouts
 ScrollView {
     id: pane; objectName: "connections-pane"
     required property var store
-    signal todoistSetupRequested()
     property string setupProvider: "gmail"
     readonly property var controller: setupProvider === "gmail" ? store.gmail : setupProvider === "outlook" ? store.outlook : setupProvider === "imap" ? store.imap : store.googleCalendar
     Theme { id: theme }
@@ -63,12 +62,7 @@ ScrollView {
         Copy { visible: pane.store.grokVoice.latencyMs >= 0; text: "Turn detected → playback: "+pane.store.grokVoice.latencyMs+" ms (excludes speech-end detection and speaker buffering)"; color: theme.muted }
         Copy { text: (pane.store.grokVoice.listeningEnabled ? (pane.store.grokVoice.duplex ? "Echo cancellation on · speak to interrupt a reply. " : "Echo cancellation unavailable · mic pauses during replies. ") : "Echo cancellation enables spoken interruption when available. ")+"Esc ends the chat and turns the microphone off; Shift+Esc also turns it off. Ends after 5 minutes, 1 minute idle, or when the desktop locks. Desktop actions use your existing Saturn assistant."; color: theme.muted }
         Copy { text: "Tasks"; font.bold: true }
-        Flow {
-            Layout.fillWidth: true; spacing: 8
-            Action { text: "Local · no account"; selected: pane.store.taskSource === "local"; onClicked: pane.store.setTaskSource("local") }
-            Action { text: "Todoist"; selected: pane.store.taskSource === "todoist"; onClicked: pane.store.setTaskSource("todoist") }
-            Action { text: "Set up Todoist"; onClicked: { pane.store.setTaskSource("todoist"); pane.todoistSetupRequested(); } }
-        }
+        Copy { text: "Tasks are local to this computer. No account is needed; use the Tasks card to add, date, complete and archive them."; color: theme.muted }
         Copy { text: "Mail"; font.bold: true }
         Flow {
             Layout.fillWidth: true; spacing: 8

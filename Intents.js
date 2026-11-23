@@ -52,7 +52,7 @@ function parse(question, today) {
     if (/^resume\s+(?:the\s+)?(?:focus|timer|focus timer)$/i.test(text)) return action("resume_focus");
     match = text.match(/^(?:set\s+)?(?:the\s+)?volume\s+(?:to\s+)?(\d+)\s*(?:%|percent)?$/i);
     if (match) return action("set_volume","",Number(match[1]));
-    match = text.match(/^(?:add\s+(?:a\s+)?(?:todoist\s+)?task\s*:?|todo:)\s+(.+)$/i);
+    match = text.match(/^(?:add\s+(?:a\s+)?task\s*:?|todo:)\s+(.+)$/i);
     if (match) return action("add_task",match[1]);
     match = text.match(/^(?:note:|(?:take|make|add)\s+(?:a\s+)?note\s*:?|note that)\s*(.+)$/i);
     if (match) return action("append_note",match[1]);
@@ -64,7 +64,7 @@ function parse(question, today) {
         if (match[1].toLowerCase() === "tomorrow") date.setUTCDate(date.getUTCDate()+1);
         return action("show_day",date.toISOString().slice(0,10));
     }
-    match = text.match(/^open\s+(?:(?:my|the)\s+)?(browser|terminal|file manager|files|hey|todoist|calendar)$/i);
+    match = text.match(/^open\s+(?:(?:my|the)\s+)?(browser|terminal|file manager|files|hey|calendar)$/i);
     if (match) return action("open_app",match[1].toLowerCase() === "file manager" ? "files" : match[1].toLowerCase());
     return null;
 }

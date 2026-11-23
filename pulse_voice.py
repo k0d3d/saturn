@@ -36,7 +36,7 @@ WAKE_VERIFY_TIMEOUT = 10
 # compound requests and uncertain words retain the higher-quality second pass.
 FAST_PATTERNS = [
     r'(?:open|show|go to) (?:(?:my|the|oma|saturn) )?(?:saturn|workspace|messages|assistant|connections|insights|notepad|notes|dashboard)',
-    r'open (?:(?:my|the) )?(?:browser|terminal|file manager|files|hey|todoist|calendar)',
+    r'open (?:(?:my|the) )?(?:browser|terminal|file manager|files|hey|calendar)',
     r'(?:close|hide|dismiss) (?:oma )?saturn',
     r'(?:mute|unmute)(?: (?:the )?(?:sound|audio|volume))?',
     r'(?:switch to|go to|show) workspace (?:one|two|three|four|five|six|seven|eight|nine|ten)',

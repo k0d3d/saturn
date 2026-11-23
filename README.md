@@ -50,13 +50,12 @@ Version 0.8.0 renames the project to **Saturn** and the plugin id to `k0d3d.satu
 
 ## Connections
 
-Open **Connections** to choose your task, mail and calendar providers. Local tasks need no account; you can switch between HEY, Gmail, Outlook and IMAP mail, and between OmaCal and direct Google Calendar. See the [connection setup guide](CONNECTIONS.md). New Google/Microsoft adapters are beta and require your own OAuth app registration; live-account sign-in has not yet been verified.
+Open **Connections** to choose your mail and calendar providers. Tasks are always local and need no account; you can switch between HEY, Gmail, Outlook and IMAP mail, and between OmaCal and direct Google Calendar. See the [connection setup guide](CONNECTIONS.md). New Google/Microsoft adapters are beta and require your own OAuth app registration; live-account sign-in has not yet been verified.
 
 All integrations are optional:
 
 | Connection | Setup | Adds |
 | --- | --- | --- |
-| Todoist | Switch Local to Todoist, then Account → API key | Synced tasks, Quick Add and reminders |
 | OmaCal | Install OmaCal and connect a calendar there | Read-only daily event feed and links to the full calendar |
 | IMAP | Connections → TLS server, username and app password | Unread headers, mark read and Undo |
 | Gmail / Outlook | Connections → account setup with your OAuth client ID | Unread inbox, mark read and Undo |
@@ -112,38 +111,22 @@ Filtering is a best-effort guess from the latest preview, not contact-list or
 whole-thread analysis. It never deletes, blocks or marks anything read. Unknown
 texts remain visible by default; review All if something seems missing.
 
-## Todoist
+## Tasks
 
-New installations start with local tasks. A saved Todoist connection is recognized automatically unless you have chosen a different source. Your source choice is remembered. Use **Account** in the Tasks card to connect
-or replace an API key. Use your own Todoist account; no credentials are bundled.
+Tasks are local to this computer. No account is needed and nothing is uploaded.
 
-- **Today** shows overdue and today's tasks; **All** shows all active tasks.
-- The add field supports Todoist Quick Add syntax: `Buy milk tomorrow #Shopping p1`.
-- Tasks without a parsed due date default to **Today**. Explicit dates and recurrence are preserved.
-- The circle completes a task in Todoist. Recurring tasks advance to their next occurrence.
-- Click a task name to open that task in Todoist. Long names wrap in full.
-- ▶ selects a task for the focus timer.
-- 🔔 opens **Remind me**: 30 minutes, one hour, this evening at 6 PM, tomorrow at 9 AM, or a custom local date/time.
-  Reminders are saved as absolute Todoist push reminders without changing the task’s due date. Existing
-  reminders appear in the dialog. A failed request keeps the selected time and idempotency key for retry.
-  Delivery uses Todoist’s notification settings and devices.
-- ↻ refreshes; automatic refresh also runs every two minutes, and when reopening
-  a workspace whose last refresh was over a minute ago.
-- Creation and completion are confirmed by the API before the UI reports success.
-  Failed creation preserves the draft. An idempotency key prevents duplicates
-  when retrying the same task after an interrupted response.
-- Click the **Todoist / Local** button to switch to the original local list.
-  Existing local tasks are preserved and are never uploaded automatically.
-
-The API key is stored separately from the workspace in
-`${XDG_CONFIG_HOME:-~/.config}/saturn/todoist.json`, mode 600, inside a private
-directory. It never enters process arguments or shell.json. Network calls go
-only to `https://api.todoist.com/api/v1/`. Requests follow the
-[official Todoist API](https://developer.todoist.com/api/v1/).
-
-Disconnect removes Saturn's local credential; it does not delete Todoist data.
-Completed Todoist tasks remain in Todoist history; this UI currently shows active
-tasks only. Insights counts tasks completed through Saturn, not all Todoist history.
+- **Today** shows overdue and undated tasks plus anything due today.
+- **Upcoming** shows future-dated tasks in date order; **All** shows every active task.
+- **Completed** keeps finished tasks in view, newest first. The circle reopens a task.
+- **Archive** hides a task from every active list. Use ↩ to restore it.
+- The add field understands `tomorrow`, `today`, `next Mon` and `YYYY-MM-DD`;
+  the **Today** / **Tomorrow** chips and the due field set an explicit date.
+- ▶ selects a task for the focus timer. Long titles wrap in full.
+- Tasks are stored with `due`, `completedAt`, `archived`, tags and timestamps in
+  `~/.local/share/saturn/workspace.json`, so an AI agent can read and update them.
+- `saturn tasks` lists tasks; `saturn tasks add "Buy milk tomorrow"`,
+  `saturn tasks complete <id>`, `saturn tasks archive <id>`,
+  `saturn tasks restore <id>` and `saturn tasks due <id> 2026-11-24` work from the shell.
 
 ## Calendar
 
@@ -173,8 +156,7 @@ ChatGPT CLI login; it receives the request plus the displayed tasks, calendar, n
 mail previews. Turn off **Include mail previews** in the Assistant tab to omit mail.
 
 Installed-app matches and common explicit commands (focus, volume, add task, file search, and calendar day) run locally without an AI request. Try `start 25 minutes of focus`, `volume 40%`, or `add task Buy milk tomorrow`. Codex returns a structured plan;
-direct requests run automatically, including “make a timer for 10min”. Ask for a preview to get action cards with **Run** buttons. Multi-step actions run in order and stop if an action fails. Supported actions are focus control, Todoist tasks
-and reminders, app/web/document opening, common-folder file search, volume, calendar navigation,
+direct requests run automatically, including “make a timer for 10min”. Ask for a preview to get action cards with **Run** buttons. Multi-step actions run in order and stop if an action fails. Supported actions are focus control, local tasks, app/web/document opening, common-folder file search, volume, calendar navigation,
 and appending notes. Results are shown after execution. It can answer questions and draft text,
 but this version does not send mail, modify arbitrary system settings, or execute generated shell code.
 
@@ -318,7 +300,7 @@ omarchy plugin enable k0d3d.saturn
 display; the workspace's Full screen button uses its own display.
 
 Requires Omarchy's Quickshell shell, Qt Quick Controls, Python 3, and notify-send.
-OmaCal, Todoist, HEY CLI, Codex, and Voxtype provide their respective optional integrations.
+OmaCal, HEY CLI, Codex, and Voxtype provide their respective optional integrations.
 
 ### HEY quick actions
 

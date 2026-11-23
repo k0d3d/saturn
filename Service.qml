@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "Logic.js" as Logic
+import "Dates.js" as Dates
 
 Item {
     id: root
@@ -31,9 +32,6 @@ Item {
     property double agendaUpdated: 0
     readonly property string dataDir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/saturn"
     readonly property string stateDir: Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"
-    readonly property string taskSource: workspace.taskSource || (todoistController.connected ? "todoist" : "local")
-    readonly property bool useTodoist: taskSource === "todoist"
-    readonly property alias todoist: todoistController
     property bool mailEnabled: true
     readonly property alias hey: mailController
     readonly property string mailSource: workspace.mailSource || "hey"
@@ -103,14 +101,13 @@ Item {
             w.commandOpen=false; w.dashboardOpen=false; w.pinned=true; w.open();
         });
     }
-    readonly property var localTasks: { taskRevision; return workspace.tasks.map(t => Object.assign({}, t)); }
-    readonly property var tasks: useTodoist ? todoistController.tasks : localTasks
+    readonly property var tasks: { taskRevision; return workspace.tasks.map(t => Object.assign({}, t)); }
     readonly property var focusState: { revision; return Object.assign({}, workspace.focus); }
     readonly property string note: { revision; return workspace.notes[noteDay] || ""; }
-    readonly property int remainingTasks: tasks.filter(t => !t.done).length
+    readonly property int remainingTasks: tasks.filter(t => !t.done && !t.archived).length
     readonly property string timerText: { revision; return Logic.clock(workspace.focus.duration ? workspace.focus.duration - workspace.focus.elapsed : workspace.focus.elapsed); }
     readonly property int todayMinutes: { revision; return Math.floor((workspace.activity[today] || 0) / 60); }
-    readonly property int todayCompleted: { revision; return workspace.tasks.filter(t => t.done && Logic.dayKey(t.completedAt) === today).length + (workspace.todoistCompleted || []).filter(t => Logic.dayKey(t.at) === today).length; }
+    readonly property int todayCompleted: { revision; return workspace.tasks.filter(t => t.done && Logic.dayKey(t.completedAt) === today).length; }
     readonly property var week: {
         revision;
         var rows = [];
@@ -129,36 +126,53 @@ Item {
         storage.setText(payload);
     }
     signal taskAdded(string title)
-    Todoist {
-        id: todoistController
-        onTaskCreated: function(title) { root.notice = "Added to Todoist."; root.taskAdded(title); }
-        onReminderCreated: root.notice = "Reminder saved in Todoist."
-        onTaskClosed: function(taskId) {
-            if (!root.ready) return;
-            if (!root.workspace.todoistCompleted) root.workspace.todoistCompleted = [];
-            root.workspace.todoistCompleted.push({id: taskId, at: Date.now()});
-            root.changed(); root.notice = "Completed in Todoist.";
-        }
-    }
-    function setTaskSource(source) {
-        if (!ready || ["local", "todoist"].indexOf(source) < 0) return;
-        workspace = Object.assign({}, workspace, {taskSource: source}); changed();
-    }
-    function addTask(title) {
-        title = String(title).trim().slice(0, 500);
-        if (!ready || error || !title) return;
-        if (useTodoist) { if (todoistController.connected) todoistController.add(title); return; }
-        workspace.tasks.unshift({id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), title: title, done: false, completedAt: 0});
+    function addTask(title, dueText) {
+        var parsed = Dates.parseDue(title, today);
+        var due = Dates.validDay(dueText) ? dueText : parsed.due;
+        if (!ready || error || !parsed.title) return;
+        var stamp = Date.now();
+        workspace.tasks.unshift({
+            id: stamp.toString(36) + Math.random().toString(36).slice(2, 8),
+            title: parsed.title,
+            done: false,
+            completedAt: 0,
+            due: due,
+            createdAt: stamp,
+            updatedAt: stamp,
+            archived: false,
+            archivedAt: 0,
+            body: "",
+            tags: [],
+            source: "local",
+            externalId: null
+        });
         changed(true, true);
-        taskAdded(title);
+        taskAdded(parsed.title);
+    }
+    function findTask(id) { return workspace.tasks.find(t => t.id === id); }
+    function setTaskDue(id, due) {
+        var t = findTask(id);
+        if (!t || !ready || error) return;
+        t.due = Dates.validDay(due) ? due : null;
+        t.updatedAt = Date.now();
+        changed(true, true);
+    }
+    function archiveTask(id) {
+        var t = findTask(id);
+        if (!t || !ready || error || t.archived) return;
+        t.archived = true; t.archivedAt = Date.now(); t.updatedAt = t.archivedAt;
+        changed(true, true);
+        notice = "Task archived · undo from Archive.";
+    }
+    function restoreTask(id) {
+        var t = findTask(id);
+        if (!t || !ready || error || !t.archived) return;
+        t.archived = false; t.archivedAt = 0; t.updatedAt = Date.now();
+        changed(true, true);
+        notice = "Task restored.";
     }
     function dismissWorkspace() {
         eachWindow(w => { w.commandOpen = false; w.dashboardOpen = false; w.close(); });
-    }
-    function openTask(task) {
-        if (!useTodoist || !task || !task.id) return;
-        Quickshell.execDetached(["xdg-open", "https://app.todoist.com/app/task/" + encodeURIComponent(task.id)]);
-        dismissWorkspace();
     }
     function openCalendar(date) {
         if (calendarSource === "off") return;
@@ -176,10 +190,12 @@ Item {
         dismissWorkspace();
     }
     function toggleTask(id) {
-        if (useTodoist) { if (todoistController.connected) todoistController.complete(id); return; }
-        var t = workspace.tasks.find(t => t.id === id);
+        var t = findTask(id);
         if (!t || !ready || error) return;
-        t.done = !t.done; t.completedAt = t.done ? Date.now() : 0; changed(true, true);
+        t.done = !t.done;
+        t.completedAt = t.done ? Date.now() : 0;
+        t.updatedAt = Date.now();
+        changed(true, true);
     }
     function setNote(text) {
         if (!ready || error || text === note) return;
@@ -323,9 +339,24 @@ Item {
         function toggle(): void { root.eachWindow(w => { if (w.commandOpen) w.commandOpen = false; else w.openCommand(); }); }
         function command(): void { root.eachWindow(w => w.openCommand()); }
         function tab(name: string): void { root.eachWindow(w => { w.workspacePanel.insights = name === "Insights"; w.pinned = true; w.open(); }); }
+        function tasks(command: string, first: string, second: string): string {
+            var cmd = command || "list";
+            if (cmd === "list") return JSON.stringify(root.tasks);
+            if (cmd === "add") { root.addTask(first, second); return JSON.stringify({ok: !!first && first.trim().length > 0}); }
+            if (cmd === "complete" || cmd === "archive" || cmd === "restore") {
+                var task = root.findTask(first);
+                if (!task) return JSON.stringify({ok: false, error: "No such task"});
+                if (cmd === "complete") root.toggleTask(first);
+                else if (cmd === "archive") root.archiveTask(first);
+                else root.restoreTask(first);
+                return JSON.stringify({ok: true, id: first});
+            }
+            if (cmd === "due") { root.setTaskDue(first, second); return JSON.stringify({ok: true, id: first, due: second || null}); }
+            return JSON.stringify({ok: false, error: "Unknown task command"});
+        }
         function status(): string {
             var panels = []; root.eachWindow(w => panels.push({screen: w.screen.name, expanded: w.expanded, dashboard: w.dashboardOpen, command: w.commandOpen, timerPopout: w.timerPopout.visible, tab: w.currentTab, hovered: w.hovered}));
-            return JSON.stringify({ready: root.ready, error: root.error, schema: root.workspace.version, tasks: root.tasks.length, remaining: root.remainingTasks, taskSource: root.taskSource, mailSource: root.mailSource, calendarSource: root.calendarSource, todoistConnected: todoistController.connected, todoistBusy: todoistController.busy, todoistError: todoistController.error, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});
+            return JSON.stringify({ready: root.ready, error: root.error, schema: root.workspace.version, tasks: root.tasks.length, remaining: root.remainingTasks, archived: root.tasks.filter(t => t.archived).length, mailSource: root.mailSource, calendarSource: root.calendarSource, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});
         }
         function messages(): void { root.eachWindow(w => { w.pinned=true; w.open(); w.workspacePanel.messagesOpen=true; }); }
         function connections(): void { root.eachWindow(w => { w.pinned=true; w.open(); w.workspacePanel.connectionsOpen=true; }); }

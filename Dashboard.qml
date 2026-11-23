@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
+import "Dates.js" as Dates
 
 PanelWindow {
     id: dash
@@ -14,11 +15,9 @@ PanelWindow {
     signal expandRequested()
     property bool compact: false
     property bool pinned: false
-    property bool accountOpen: false
     property bool awaitingEntry: false
     readonly property bool hovered: workspaceHover.hovered
-    readonly property bool editing: taskInput.activeFocus || notes.activeFocus || tokenInput.activeFocus || minutesInput.activeFocus || remindersPopup.visible || connectionsOpen || (assistantOpen && assistantPane.editing)
-    readonly property alias reminderPopup: remindersPopup
+    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || connectionsOpen || (assistantOpen && assistantPane.editing)
     readonly property real uiScale: compact ? 0.82 : 1
     property string taskView: "Today"
     property bool insights: false
@@ -36,7 +35,15 @@ PanelWindow {
     property string calendarDate: store.calendarToday
     readonly property int calendarIndex: store.agendaDays.findIndex(d => d.date === dash.calendarDate)
     readonly property var calendarDay: store.agendaDays[Math.max(0, calendarIndex)] || null
-    readonly property var taskRows: store.tasks.filter(t => !t.done && (!dash.store.useTodoist || dash.taskView === "All" || (!!t.due && t.due.slice(0,10) <= dash.store.today)))
+    readonly property var taskRows: Logic.tasksInView(dash.store.tasks, dash.taskView, dash.store.today)
+    function taskCount(view) { return Logic.tasksInView(dash.store.tasks, view, dash.store.today).length }
+    function submitTask() {
+        var text = taskInput.text.trim();
+        if (!text) return;
+        dash.store.addTask(text, dueInput.text.trim());
+        taskInput.text = ""; dueInput.text = "";
+        page.forceActiveFocus();
+    }
     readonly property color textColor: theme.text
     anchors { top: true; bottom: !dash.compact; left: !dash.compact; right: !dash.compact }
     margins.top: compact ? Style.bar.sizeHorizontal + 5 : 0
@@ -47,7 +54,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: visible ? (compact ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive) : WlrKeyboardFocus.None
     color: "transparent"
-    onVisibleChanged: if (visible) { awaitingEntry = compact; page.forceActiveFocus(); if (assistantOpen) Qt.callLater(() => assistantPane.focusInput()); if (store.useTodoist) store.todoist.refreshIfStale(); store.mail.refreshIfStale(); if(store.calendarSource === "google") store.googleCalendar.refreshIfStale(); if (compact && !pinned) leaveTimer.restart(); } else { remindersPopup.close(); store.assistant.cancelVoice(); }
+    onVisibleChanged: if (visible) { awaitingEntry = compact; page.forceActiveFocus(); if (assistantOpen) Qt.callLater(() => assistantPane.focusInput()); store.mail.refreshIfStale(); if(store.calendarSource === "google") store.googleCalendar.refreshIfStale(); if (compact && !pinned) leaveTimer.restart(); } else { store.assistant.cancelVoice(); }
     onEditingChanged: if (!editing && !hovered) leaveTimer.restart()
     Timer { id: leaveTimer; interval: dash.awaitingEntry ? 1200 : 700; onTriggered: if (dash.compact && dash.visible && !dash.hovered && !dash.pinned && !dash.editing) dash.close() }
     Rectangle { anchors.fill: parent; color: theme.background; radius: 0; border.width: dash.compact ? 1 : 0; border.color: theme.border }
@@ -60,7 +67,7 @@ PanelWindow {
     Connections {
         target: dash.store
         function onAgendaDaysChanged() { if(dash.store.agendaDays.length && !dash.store.agendaDays.some(d=>d.date === dash.calendarDate)) dash.calendarDate=dash.store.agendaDays[0].date; }
-        function onTaskAdded(title) { if (taskInput.text.trim() === title) taskInput.text = ""; }
+        function onTaskAdded(title) { if (taskInput.text.trim() === title) { taskInput.text = ""; dueInput.text = ""; } }
     }
 
     component Label: Text {
@@ -90,7 +97,6 @@ PanelWindow {
 
     FocusScope {
         id: page; anchors.fill: parent; focus: true
-        ReminderPopup { id: remindersPopup; store: dash.store }
         HoverHandler { id: workspaceHover; onHoveredChanged: { if (hovered) { dash.awaitingEntry = false; leaveTimer.stop(); } else leaveTimer.restart(); } }
         Keys.onEscapePressed: dash.close()
         ColumnLayout {
@@ -123,32 +129,25 @@ PanelWindow {
                 Card {
                     color: theme.tasks; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 420
                     ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 16
+                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 12
                         RowLayout {
-                            Label { Layout.fillWidth: true; text: dash.taskView === "Today" ? "Today’s tasks" : "All tasks"; font.pixelSize: 22; font.weight: Font.DemiBold }
+                            Label {
+                                Layout.fillWidth: true; font.pixelSize: 22; font.weight: Font.DemiBold
+                                text: ({Today: "Today’s tasks", Upcoming: "Upcoming", All: "All tasks", Completed: "Completed", Archive: "Archive"})[dash.taskView]
+                            }
                             Label { text: Qt.formatDate(new Date(dash.store.now), "ddd, d MMM"); font.pixelSize: 12 }
                         }
                         RowLayout {
-                            Action { text: "Today"; selected: dash.taskView === "Today"; onClicked: dash.taskView = "Today" }
-                            Action { text: "All " + dash.store.remainingTasks; selected: dash.taskView === "All"; onClicked: dash.taskView = "All" }
-                            Item { Layout.fillWidth: true }
-                            Action { text: "↻"; enabled: dash.store.useTodoist && !dash.store.todoist.busy; onClicked: dash.store.todoist.refresh(); Accessible.name: "Refresh Todoist" }
+                            Action { text: "Today " + dash.taskCount("Today"); selected: dash.taskView === "Today"; onClicked: dash.taskView = "Today" }
+                            Action { text: "Upcoming " + dash.taskCount("Upcoming"); selected: dash.taskView === "Upcoming"; onClicked: dash.taskView = "Upcoming" }
+                            Action { text: "All " + dash.taskCount("All"); selected: dash.taskView === "All"; onClicked: dash.taskView = "All" }
                         }
                         RowLayout {
-                            Action { text: dash.store.useTodoist ? "Todoist" : "Local"; onClicked: dash.store.setTaskSource(dash.store.useTodoist ? "local" : "todoist") }
-                            Label { Layout.fillWidth: true; text: dash.store.todoist.busy ? "Syncing…" : dash.taskRows.length + " to do"; font.pixelSize: 12; opacity: 0.7 }
-                            Action { text: "Account"; visible: dash.store.useTodoist; onClicked: dash.accountOpen = !dash.accountOpen }
+                            Action { text: "Completed " + dash.taskCount("Completed"); selected: dash.taskView === "Completed"; onClicked: dash.taskView = "Completed" }
+                            Action { text: "Archive " + dash.taskCount("Archive"); selected: dash.taskView === "Archive"; onClicked: dash.taskView = "Archive" }
+                            Item { Layout.fillWidth: true }
+                            Label { text: dash.taskRows.length + (dash.taskView === "Completed" ? " done" : " to do"); font.pixelSize: 12; opacity: 0.7 }
                         }
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            visible: dash.store.useTodoist && (dash.accountOpen || (dash.store.todoist.loaded && !dash.store.todoist.connected))
-                            Entry { id: tokenInput; Layout.fillWidth: true; placeholderText: "Todoist API key"; echoMode: TextInput.Password; maximumLength: 512; enabled: !dash.store.todoist.busy }
-                            RowLayout {
-                                Action { text: "Connect"; enabled: !dash.store.todoist.busy && tokenInput.text.trim().length > 0; onClicked: { dash.store.todoist.connectToken(tokenInput.text); tokenInput.text = ""; page.forceActiveFocus(); } }
-                                Action { text: "Disconnect"; visible: dash.store.todoist.connected; enabled: !dash.store.todoist.busy; onClicked: dash.store.todoist.disconnect() }
-                            }
-                        }
-                        Label { visible: !!dash.store.todoist.error && dash.store.useTodoist; text: dash.store.todoist.error; Layout.fillWidth: true; wrapMode: Text.Wrap; color: theme.urgent; font.pixelSize: 12 }
                         ListView {
                             Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 6
                             model: dash.taskRows
@@ -156,39 +155,62 @@ PanelWindow {
                             delegate: Item {
                                 id: taskRow
                                 required property var modelData
-                                width: ListView.view.width; height: Math.max(78, taskContent.implicitHeight + 16)
+                                property var task: modelData
+                                width: ListView.view.width; height: Math.max(72, taskContent.implicitHeight + 14)
                                 RowLayout {
                                     id: taskContent
                                     anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 10
-                                    Action { text: "○"; implicitWidth: 34; enabled: !dash.store.useTodoist || !dash.store.todoist.busy; onClicked: dash.store.toggleTask(modelData.id); Accessible.name: "Complete task" }
-                                    AbstractButton {
-                                        id: taskLink
-                                        objectName: "task-open"
-                                        Layout.fillWidth: true
-                                        implicitHeight: contentItem.implicitHeight
-                                        enabled: dash.store.useTodoist
-                                        hoverEnabled: true
-                                        Accessible.name: "Open in Todoist: " + taskRow.modelData.title
-                                        onClicked: dash.store.openTask(taskRow.modelData)
-                                        HoverHandler { cursorShape: taskLink.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor }
-                                        ToolTip.visible: hovered; ToolTip.text: "Open in Todoist"
-                                        contentItem: ColumnLayout {
-                                            spacing: 6
-                                            Label { Layout.fillWidth: true; text: taskRow.modelData.title; font.pixelSize: 16; wrapMode: Text.Wrap; elide: Text.ElideNone; font.underline: taskLink.hovered }
-                                            Label { Layout.fillWidth: true; text: [taskRow.modelData.due || "", taskRow.modelData.project ? "#" + taskRow.modelData.project : ""].filter(Boolean).join(" · "); font.pixelSize: 11; opacity: 0.6; visible: !!text }
+                                    Action {
+                                        text: taskRow.task.done ? "✓" : "○"; implicitWidth: 34
+                                        onClicked: dash.store.toggleTask(taskRow.task.id)
+                                        Accessible.name: taskRow.task.done ? "Reopen task" : "Complete task"
+                                    }
+                                    ColumnLayout {
+                                        Layout.fillWidth: true; spacing: 4
+                                        Label {
+                                            Layout.fillWidth: true; text: taskRow.task.title
+                                            font.pixelSize: 16; wrapMode: Text.Wrap; elide: Text.ElideNone
+                                            color: taskRow.task.done ? theme.muted : theme.text
+                                            font.strikeout: !!taskRow.task.done
+                                        }
+                                        RowLayout {
+                                            spacing: 8
+                                            Label {
+                                                text: Dates.dueLabel(taskRow.task.due, dash.store.today)
+                                                font.pixelSize: 11
+                                                color: (!taskRow.task.done && taskRow.task.due && taskRow.task.due < dash.store.today) ? theme.urgent : theme.muted
+                                                visible: !!text
+                                            }
+                                            Repeater {
+                                                model: (taskRow.task.tags || []).slice(0, 3)
+                                                Label { text: "#" + modelData; font.pixelSize: 11; color: theme.muted; visible: !!text }
+                                            }
                                         }
                                     }
-                                    Action { text: "▶"; implicitWidth: 34; onClicked: dash.store.chooseFocus(modelData.title, 1500); Accessible.name: "Focus on task" }
-                                    Action { objectName: "task-reminder"; text: "🔔"; implicitWidth: 30; visible: dash.store.useTodoist; enabled: dash.store.todoist.connected && !dash.store.todoist.busy; onClicked: remindersPopup.showFor(taskRow.modelData); Accessible.name: "Remind me"; ToolTip.visible: hovered; ToolTip.text: "Remind me" }
+                                    Action { text: "▶"; implicitWidth: 34; onClicked: dash.store.chooseFocus(taskRow.task.title, 1500); Accessible.name: "Focus on task" }
+                                    Action {
+                                        text: dash.taskView === "Archive" ? "↩" : "⊟"; implicitWidth: 34
+                                        onClicked: dash.taskView === "Archive" ? dash.store.restoreTask(taskRow.task.id) : dash.store.archiveTask(taskRow.task.id)
+                                        Accessible.name: dash.taskView === "Archive" ? "Restore task" : "Archive task"
+                                        ToolTip.visible: hovered; ToolTip.text: dash.taskView === "Archive" ? "Restore" : "Archive"
+                                    }
                                 }
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: theme.alpha(theme.text, 0.14) }
                             }
-                            Label { anchors.centerIn: parent; width: parent.width; visible: parent.count === 0; text: dash.store.todoist.connected || !dash.store.useTodoist ? "Some breathing room.\nNo tasks in this view." : "Connect Todoist in the compact view."; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; opacity: 0.65; lineHeight: 1.5 }
+                            Label {
+                                anchors.centerIn: parent; width: parent.width; visible: parent.count === 0
+                                text: dash.taskView === "Archive" ? "Archive is empty." : dash.taskView === "Completed" ? "No completed tasks yet." : "Nothing here.\nAdd a task below."
+                                horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; opacity: 0.65; lineHeight: 1.5
+                            }
                         }
                         RowLayout {
-                            enabled: !dash.store.useTodoist || (dash.store.todoist.connected && !dash.store.todoist.busy)
-                            Entry { id: taskInput; Layout.fillWidth: true; maximumLength: 500; placeholderText: "+  Add a task"; onAccepted: dash.store.addTask(text) }
-                            Action { text: "+"; onClicked: dash.store.addTask(taskInput.text) }
+                            Entry { id: taskInput; Layout.fillWidth: true; maximumLength: 500; placeholderText: "+  Add a task (try “tomorrow”)"; onAccepted: dash.submitTask() }
+                            Action { text: "+"; onClicked: dash.submitTask(); Accessible.name: "Add task" }
+                        }
+                        RowLayout {
+                            Action { text: "Today"; onClicked: dueInput.text = dash.store.today }
+                            Action { text: "Tomorrow"; onClicked: dueInput.text = Dates.addDays(dash.store.today, 1) }
+                            Entry { id: dueInput; Layout.fillWidth: true; maximumLength: 40; placeholderText: "Due: YYYY-MM-DD or next Mon"; onAccepted: dash.submitTask() }
                         }
                     }
                 }
@@ -315,7 +337,7 @@ PanelWindow {
                 }
             }
             MessagesPane { store: dash.store; visible: dash.messagesOpen; Layout.fillWidth: true; Layout.fillHeight: true; onSetupRequested: dash.connectionsOpen=true }
-            ConnectionsPane { store: dash.store; visible: dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true; onTodoistSetupRequested: { dash.connectionsOpen=false; dash.accountOpen=true; } }
+            ConnectionsPane { store: dash.store; visible: dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true }
             AssistantPane { id: assistantPane; visible: dash.assistantOpen; Layout.fillWidth: true; Layout.fillHeight: true; store: dash.store }
             Rectangle {
                 visible: dash.insights && !dash.assistantOpen && !dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.focus; radius: 0

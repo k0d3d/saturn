@@ -39,7 +39,7 @@ Item {
         return {today: store.today, focus: store.focusState, tasks: store.tasks.slice(0, 80),
             calendar_days: store.agendaDays, note: store.note.slice(0, 4000),
             mail_previews: includeMail ? store.newMail.slice(0, 15).map(m => ({sender:m.creator,subject:m.title,preview:m.excerpt,url:m.url})) : [],
-            mail_included: includeMail, todoist_connected: store.useTodoist && store.todoist.connected, task_source: store.taskSource};
+            mail_included: includeMail, task_source: "local"};
     }
     function send(data) {
         if (worker.running) return false;
@@ -79,7 +79,7 @@ Item {
         case "start_focus": return "Start " + action.number + " min focus · " + (action.value || "Open focus");
         case "pause_focus": return "Pause focus";
         case "resume_focus": return "Resume focus";
-        case "add_task": return "Add " + (store.useTodoist ? "Todoist" : "local") + " task · " + action.value;
+        case "add_task": return "Add local task · " + action.value;
         case "complete_task": return "Complete task · " + taskTitle(action.task_id);
         case "remind_task": return "Remind me · " + taskTitle(action.task_id) + " · " + action.value;
         case "append_note": return "Add to today’s note · " + action.value;
@@ -118,16 +118,13 @@ Item {
             case "show_pulse":
                 store.showPulse(action.value); break;
             case "add_task":
-                if (store.useTodoist) { state(index,"Running…"); send({mode:"execute",action:action}); return; }
                 if (!store.ready || store.error) throw new Error("Tasks are unavailable.");
                 store.addTask(action.value); break;
             case "complete_task":
-                if (store.useTodoist) { state(index,"Running…"); send({mode:"execute",action:action}); return; }
                 if (!store.ready || store.error || !store.tasks.some(t=>t.id === action.task_id && !t.done)) throw new Error("That local task is unavailable.");
                 store.toggleTask(action.task_id); break;
             case "remind_task":
-                if (!store.useTodoist) throw new Error("Reminders require a Todoist task.");
-                state(index,"Running…"); send({mode:"execute",action:action}); return;
+                throw new Error("Reminders are not available for local tasks.");
             case "start_focus":
                 if (!store.ready || store.error || action.number < 1 || action.number > 999) throw new Error("Focus is unavailable.");
                 store.chooseFocus(action.value, action.number * 60); store.toggleTimer(); break;
@@ -188,8 +185,6 @@ Item {
                     } else if (root.mode === "execute") {
                         root.state(root.runningIndex,"Done"); root.append("result",result.result);
                         var action = root.actions[root.runningIndex];
-                        if (["add_task","complete_task","remind_task"].indexOf(action.kind) >= 0) todoistRefresh.restart();
-                        if (action.kind === "complete_task") root.store.todoist.taskClosed(action.task_id);
                         root.actionFinished(action.kind);
                     } else {
                         root.recording = result.recording === true;
@@ -205,7 +200,6 @@ Item {
         }
     }
     Timer { id: queueTimer; interval: 1; onTriggered: root.runNext() }
-    Timer { id: todoistRefresh; interval: 200; onTriggered: root.store.todoist.refresh() }
     Process {
         id: catalog
         command: ["python3", Qt.resolvedUrl("assistant.py").toString().replace("file://", "")]

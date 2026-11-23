@@ -112,7 +112,7 @@ def migrate(state):
         raise ValueError('Unrecognized focus state')
     result['focus'] = dict(focus, running=False)
 
-    for source in ['taskSource', 'mailSource', 'calendarSource']:
+    for source in ['mailSource', 'calendarSource']:
         if source in state and not isinstance(state[source], str):
             raise ValueError(f'Unrecognized {source}')
 
