@@ -187,8 +187,18 @@ def apply_incoming(state, meta, body):
         if not SAFE_DATE.match(day):
             return False
         local = state.setdefault('notes', {}).get(day, '')
-        if body.strip() != local.strip() and (updated > base.get(item_id, 0) or not local):
+        if body.strip() == local.strip():
+            return False
+        daily_base = sync.get('vault', {}).get('daily', {})
+        last = daily_base.get(day) if isinstance(daily_base, dict) else None
+        if last is None or local.strip() == str(last).strip():
             state['notes'][day] = body
+        else:
+            conflicts = sync.setdefault('conflicts', [])
+            conflicts.append({'at': updated or 1, 'id': item_id, 'field': 'body',
+                              'local': 'workspace', 'vault': 'markdown'})
+            del conflicts[:-200]
+            return False
         base[item_id] = updated
         return True
     if kind not in {'task', 'note'}:
@@ -310,6 +320,9 @@ def main(argv):
             base[task['id']] = task.get('updatedAt', 0)
         for note in state.get('notesV2', []):
             base[note['id']] = note.get('updatedAt', 0)
+        expected_daily = {day: str(text) for day, text in state.get('notes', {}).items()}
+        daily_changed = vault_meta.get('daily') != expected_daily
+        vault_meta['daily'] = expected_daily
         for day in state.get('notes', {}):
             base[f'daily:{day}'] = 0
         for tomb in sync.get('tombstones', []):
@@ -319,7 +332,7 @@ def main(argv):
         vault_meta['base'] = base
         if pulled:
             vault_meta['lastSync'] = int(datetime.now(timezone.utc).timestamp() * 1000)
-        if metadata_changed or pulled:
+        if metadata_changed or daily_changed or pulled:
             save_state(state)
         pushed = write_vault(state, files)
     conflict_changed = write_conflicts(state) if mode != 'status' else False

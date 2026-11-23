@@ -80,6 +80,14 @@ class VaultSyncTests(unittest.TestCase):
         self.assertEqual(self.state()['tasks'][0]['body'], 'Edited in vault')
         self.assertIsNotNone(self.state()['sync']['vault'].get('lastSync'))
 
+    def test_daily_note_external_edit_is_pulled(self):
+        self.call('push')
+        path = self.file_for('daily:2026-11-23')
+        meta, body = vault.parse(path.read_text())
+        path.write_text(vault.render(meta, body + '\nAdded in vault'))
+        self.assertTrue(self.call('pull')['pulled'])
+        self.assertIn('Added in vault', self.state()['notes']['2026-11-23'])
+
     def test_two_sided_change_is_conflict_and_local_wins(self):
         self.call('push')
         path = self.file_for('task1')
