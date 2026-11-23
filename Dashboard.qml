@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
+import "Logic.js" as Logic
 import "Dates.js" as Dates
 
 PanelWindow {
