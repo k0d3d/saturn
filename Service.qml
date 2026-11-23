@@ -237,6 +237,39 @@ Item {
     function searchNotes(query, limit) {
         return Notes.search(workspace, query || "", limit || 80);
     }
+
+    function tasksCommand(command, first, second) {
+        var cmd = command || "list";
+        if (cmd === "list") return JSON.stringify(root.tasks);
+        if (cmd === "add") { root.addTask(first, second); return JSON.stringify({ok: !!first && first.trim().length > 0}); }
+        if (cmd === "complete" || cmd === "archive" || cmd === "restore") {
+            var task = root.findTask(first);
+            if (!task) return JSON.stringify({ok: false, error: "No such task"});
+            if (cmd === "complete") root.toggleTask(first);
+            else if (cmd === "archive") root.archiveTask(first);
+            else root.restoreTask(first);
+            return JSON.stringify({ok: true, id: first});
+        }
+        if (cmd === "due") { root.setTaskDue(first, second); return JSON.stringify({ok: true, id: first, due: second || null}); }
+        return JSON.stringify({ok: false, error: "Unknown task command"});
+    }
+    function notesCommand(command, a, b, c, d) {
+        var cmd = command || "list";
+        if (cmd === "list") return JSON.stringify(root.workspace.notesV2);
+        if (cmd === "search") return JSON.stringify(root.searchNotes(a, b ? Number(b) : 80));
+        if (cmd === "add") return JSON.stringify({ok: !!a, id: a ? root.addNote(a, b, c, d) : ""});
+        if (cmd === "update") return JSON.stringify({ok: root.updateNote(a, b, c, d)});
+        if (cmd === "pin") {
+            if (Notes.isDaily(a)) return JSON.stringify({ok: false, error: "Daily notes cannot be pinned"});
+            root.toggleNotePin(a); return JSON.stringify({ok: true, id: a});
+        }
+        if (cmd === "archive" || cmd === "restore") {
+            if (Notes.isDaily(a)) return JSON.stringify({ok: false, error: "Daily notes cannot be archived"});
+            if (cmd === "archive") root.archiveNote(a); else root.restoreNote(a);
+            return JSON.stringify({ok: true, id: a});
+        }
+        return JSON.stringify({ok: false, error: "Unknown note command"});
+    }
     function chooseFocus(title, duration) {
         if (!ready || error) return;
         workspace.focus = {title: title || "Open focus", duration: duration, elapsed: 0, running: false};
@@ -370,38 +403,8 @@ Item {
         function toggle(): void { root.eachWindow(w => { if (w.commandOpen) w.commandOpen = false; else w.openCommand(); }); }
         function command(): void { root.eachWindow(w => w.openCommand()); }
         function tab(name: string): void { root.eachWindow(w => { w.workspacePanel.insights = name === "Insights"; w.pinned = true; w.open(); }); }
-        function tasks(command: string, first: string, second: string): string {
-            var cmd = command || "list";
-            if (cmd === "list") return JSON.stringify(root.tasks);
-            if (cmd === "add") { root.addTask(first, second); return JSON.stringify({ok: !!first && first.trim().length > 0}); }
-            if (cmd === "complete" || cmd === "archive" || cmd === "restore") {
-                var task = root.findTask(first);
-                if (!task) return JSON.stringify({ok: false, error: "No such task"});
-                if (cmd === "complete") root.toggleTask(first);
-                else if (cmd === "archive") root.archiveTask(first);
-                else root.restoreTask(first);
-                return JSON.stringify({ok: true, id: first});
-            }
-            if (cmd === "due") { root.setTaskDue(first, second); return JSON.stringify({ok: true, id: first, due: second || null}); }
-            return JSON.stringify({ok: false, error: "Unknown task command"});
-        }
-        function notes(command: string, a: string, b: string, c: string, d: string): string {
-            var cmd = command || "list";
-            if (cmd === "list") return JSON.stringify(root.workspace.notesV2);
-            if (cmd === "search") return JSON.stringify(root.searchNotes(a, b ? Number(b) : 80));
-            if (cmd === "add") return JSON.stringify({ok: !!a, id: a ? root.addNote(a, b, c, d) : ""});
-            if (cmd === "update") return JSON.stringify({ok: root.updateNote(a, b, c, d)});
-            if (cmd === "pin") {
-                if (Notes.isDaily(a)) return JSON.stringify({ok: false, error: "Daily notes cannot be pinned"});
-                root.toggleNotePin(a); return JSON.stringify({ok: true, id: a});
-            }
-            if (cmd === "archive" || cmd === "restore") {
-                if (Notes.isDaily(a)) return JSON.stringify({ok: false, error: "Daily notes cannot be archived"});
-                if (cmd === "archive") root.archiveNote(a); else root.restoreNote(a);
-                return JSON.stringify({ok: true, id: a});
-            }
-            return JSON.stringify({ok: false, error: "Unknown note command"});
-        }
+        function tasks(command: string, first: string, second: string): string { return root.tasksCommand(command, first, second); }
+        function notes(command: string, a: string, b: string, c: string, d: string): string { return root.notesCommand(command, a, b, c, d); }
         function notesOpen(): void { root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
         function notesSearch(query: string): void { root.notesQuery = query || ""; root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
         function data(command: string, a: string, b: string, c: string, d: string): string {
@@ -413,7 +416,7 @@ Item {
                             "archive-task": "archive", "restore-task": "restore", "set-due": "due"};
                 var target = tmap[cmd] || "list";
                 var taskArgs = cmd === "tasks" ? [b, c] : [a, b];
-                var result = root.tasks(target, taskArgs[0] || "", taskArgs[1] || "");
+                var result = root.tasksCommand(target, taskArgs[0] || "", taskArgs[1] || "");
                 if (cmd !== "tasks" && cmd !== "list") root.recordAgentAction(cmd);
                 return result;
             }
@@ -422,7 +425,7 @@ Item {
                             "pin-note": "pin", "archive-note": "archive", "restore-note": "restore", "search": "search"};
                 var ntarget = nmap[cmd] || "list";
                 var noteArgs = cmd === "notes" ? [b, c, d] : [a, b, c, d];
-                var noteResult = root.notes(ntarget, noteArgs[0] || "", noteArgs[1] || "", noteArgs[2] || "", noteArgs[3] || "");
+                var noteResult = root.notesCommand(ntarget, noteArgs[0] || "", noteArgs[1] || "", noteArgs[2] || "", noteArgs[3] || "");
                 if (cmd !== "notes" && cmd !== "search") root.recordAgentAction(cmd);
                 return noteResult;
             }
