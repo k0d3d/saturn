@@ -31,16 +31,16 @@ ScrollView {
         width: pane.availableWidth; spacing: 14
         Copy { text: "Your apps. Your choice."; font.pixelSize: 25; font.bold: true }
         Copy { text: "Choose what appears in your workspace. Switching keeps your accounts and local tasks saved."; color: theme.muted }
-        Copy { text: "Hey Pulse · Wake Grok"; font.bold: true }
-        Copy { text: "Say “Hey Pulse”, then speak normally. The wake phrase is detected on this computer; after it is confirmed, Grok hears your request and replies in its own voice. A short audio buffer keeps the start of your request while Grok connects."; color: theme.muted }
+        Copy { text: "Hey Saturn · Wake Grok"; font.bold: true }
+        Copy { text: "Say “Hey Saturn”, then speak normally. The wake phrase is detected on this computer; after it is confirmed, Grok hears your request and replies in its own voice. A short audio buffer keeps the start of your request while Grok connects."; color: theme.muted }
         Flow {
             Layout.fillWidth: true; spacing: 8
-            Action { text: pane.store.voice.listeningEnabled ? "Hey Pulse on · Grok" : "Enable Hey Pulse"; selected: pane.store.voice.listeningEnabled; enabled:pane.store.grokVoice.ready; onClicked: pane.store.voice.setEnabled(!pane.store.voice.listeningEnabled) }
+            Action { text: pane.store.voice.listeningEnabled ? "Hey Saturn on · Grok" : "Enable Hey Saturn"; selected: pane.store.voice.listeningEnabled; enabled:pane.store.grokVoice.ready; onClicked: pane.store.voice.setEnabled(!pane.store.voice.listeningEnabled) }
         }
         Copy { text: pane.store.voice.error || pane.store.voice.statusText; color: pane.store.voice.error ? theme.urgent : theme.muted }
-        Copy { text: "Grok Ara voice · no old local spoken replies. Continue the conversation without repeating Hey Pulse. After one minute idle, cloud audio stops and local wake listening resumes."; color: theme.muted }
-        Copy { text: "Esc or Shift+Esc turns the microphone off completely. Enable Hey Pulse again to rearm it. Wake listening pauses while locked, dictating or other apps play audio."; color: theme.muted }
-        Copy { text: "Try “Hey Pulse, show messages”, “open my browser”, “start a twenty five minute timer”, or “volume forty percent”. Say “Hey Pulse, stop listening” to turn the microphone off."; color: theme.muted }
+        Copy { text: "Grok Ara voice · no old local spoken replies. Continue the conversation without repeating Hey Saturn. After one minute idle, cloud audio stops and local wake listening resumes."; color: theme.muted }
+        Copy { text: "Esc or Shift+Esc turns the microphone off completely. Enable Hey Saturn again to rearm it. Wake listening pauses while locked, dictating or other apps play audio."; color: theme.muted }
+        Copy { text: "Try “Hey Saturn, show messages”, “open my browser”, “start a twenty five minute timer”, or “volume forty percent”. Say “Hey Saturn, stop listening” to turn the microphone off."; color: theme.muted }
         Copy { text: "Grok live · Default voice"; font.bold: true }
         Copy { text: "Ctrl+Alt+P starts or stops Grok. No wake phrase needed. Local weather uses the location saved in your Omarchy weather widget."; color: theme.muted }
         Copy { text: "Start a live conversation without a wake phrase. Your microphone audio is sent to xAI while the session is on. Uses separately billed xAI API credits; Cursor Ultra does not cover it."; color: theme.muted }
@@ -61,7 +61,7 @@ ScrollView {
             Action { text: "Clear"; visible: !!pane.store.grokVoice.defaultBot; enabled: !pane.store.grokVoice.settingsBusy; onClicked: pane.store.grokVoice.saveBot("") }
         }
         Copy { visible: pane.store.grokVoice.latencyMs >= 0; text: "Turn detected → playback: "+pane.store.grokVoice.latencyMs+" ms (excludes speech-end detection and speaker buffering)"; color: theme.muted }
-        Copy { text: (pane.store.grokVoice.listeningEnabled ? (pane.store.grokVoice.duplex ? "Echo cancellation on · speak to interrupt a reply. " : "Echo cancellation unavailable · mic pauses during replies. ") : "Echo cancellation enables spoken interruption when available. ")+"Esc ends the chat and turns the microphone off; Shift+Esc also turns it off. Ends after 5 minutes, 1 minute idle, or when the desktop locks. Desktop actions use your existing Pulse assistant."; color: theme.muted }
+        Copy { text: (pane.store.grokVoice.listeningEnabled ? (pane.store.grokVoice.duplex ? "Echo cancellation on · speak to interrupt a reply. " : "Echo cancellation unavailable · mic pauses during replies. ") : "Echo cancellation enables spoken interruption when available. ")+"Esc ends the chat and turns the microphone off; Shift+Esc also turns it off. Ends after 5 minutes, 1 minute idle, or when the desktop locks. Desktop actions use your existing Saturn assistant."; color: theme.muted }
         Copy { text: "Tasks"; font.bold: true }
         Flow {
             Layout.fillWidth: true; spacing: 8
@@ -124,7 +124,7 @@ ScrollView {
                 : "Use your Google OAuth Desktop app client ID and client secret. Enable the Gmail API or Calendar API for this connection and add yourself as a test user if needed. Sign-in opens in your browser."
             color: theme.muted
         }
-        Action { text: "Open setup guide"; onClicked: Qt.openUrlExternally("https://github.com/therealasclepius/oma-pulse/blob/main/CONNECTIONS.md") }
+        Action { text: "Open setup guide"; onClicked: Qt.openUrlExternally("https://github.com/k0d3d/saturn/blob/main/CONNECTIONS.md") }
         Entry { id: client; visible: pane.setupProvider !== "imap"; placeholderText: "OAuth client ID"; enabled: !pane.controller.busy; Accessible.name: "OAuth client ID" }
         Entry { id: secret; visible: pane.setupProvider !== "outlook" && pane.setupProvider !== "imap"; placeholderText: "Google client secret"; echoMode: TextInput.Password; enabled: !pane.controller.busy; Accessible.name: "Google client secret" }
         Entry { id: calendar; visible: pane.setupProvider === "google-calendar"; placeholderText: "Calendar ID (leave blank for primary)"; enabled: !pane.controller.busy; Accessible.name: "Google Calendar ID" }

@@ -17,6 +17,8 @@ Item {
     property bool storagePrepared: false
     property string error: ""
     property string notice: ""
+    // Canonical serialization the shell last wrote, used to ignore its own file events.
+    property string lastPersisted: ""
     property double now: Date.now()
     property double previousTick: Date.now()
     property string today: Logic.dayKey(now)
@@ -27,7 +29,7 @@ Item {
     property var calendarClocks: ({})
     property string calendarTimezone: ""
     property double agendaUpdated: 0
-    readonly property string dataDir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/omaowl"
+    readonly property string dataDir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/saturn"
     readonly property string stateDir: Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"
     readonly property string taskSource: workspace.taskSource || (todoistController.connected ? "todoist" : "local")
     readonly property bool useTodoist: taskSource === "todoist"
@@ -88,7 +90,7 @@ Item {
     VoiceOverlay { voice: grokController; liveConversation: true }
     readonly property bool voiceActive: grokController.listeningEnabled || voiceController.listeningEnabled
     readonly property string activeVoicePhase: grokController.listeningEnabled ? grokController.phase : voiceController.phase
-    readonly property string activeVoiceName: grokController.wakeEnabled ? "Hey Pulse → Grok" : "Grok live"
+    readonly property string activeVoiceName: grokController.wakeEnabled ? "Hey Saturn → Grok" : "Grok live"
     function showPulse(view) {
         if(view === "close") { eachWindow(w => { w.commandOpen=false; w.dashboardOpen=false; w.close(); }); return; }
         eachWindow(w => {
@@ -121,7 +123,10 @@ Item {
     }
     function changed(save, tasksChanged) { revision++; if (tasksChanged) taskRevision++; if (save !== false && ready) saveTimer.restart(); }
     function flush() {
-        if (ready && !error) storage.setText(JSON.stringify(workspace, null, 2) + "\n");
+        if (!ready || error || !Logic.needsWrite(workspace, lastPersisted)) return;
+        var payload = Logic.serialize(workspace);
+        lastPersisted = payload;
+        storage.setText(payload);
     }
     signal taskAdded(string title)
     Todoist {
@@ -167,7 +172,7 @@ Item {
             'omacal "$1" >/dev/null 2>&1 & sleep 0.4; '
             + 'hyprctl dispatch \'hl.dsp.focus({ window = "class:omacal" })\'; '
             + 'exec hyprctl dispatch \'hl.dsp.window.bring_to_top({ window = "class:omacal" })\'',
-            "omaowl-calendar", day]);
+            "saturn-calendar", day]);
         dismissWorkspace();
     }
     function toggleTask(id) {
@@ -202,7 +207,7 @@ Item {
     Process {
         command: ["python3", Qt.resolvedUrl("initialize.py").toString().replace("file://", "")]
         running: true
-        stderr: StdioCollector { onStreamFinished: if (text.trim()) console.warn("Oma Pulse storage:", text.trim()) }
+        stderr: StdioCollector { onStreamFinished: if (text.trim()) console.warn("Saturn storage:", text.trim()) }
         onExited: function(code) {
             if (code === 0) root.storagePrepared = true;
             else root.error = "Could not prepare workspace storage. Check " + root.dataDir;
@@ -211,12 +216,25 @@ Item {
     FileView {
         id: storage
         path: root.storagePrepared ? root.dataDir + "/workspace.json" : ""
+        watchChanges: true
         atomicWrites: true
         printErrors: false
+        onFileChanged: reload()
         onLoaded: {
-            if (root.ready || root.error) return;
-            try { root.workspace = Logic.parse(text()); root.ready = true; root.changed(false, true); }
-            catch (e) { root.error = "Could not read saved workspace. Original file preserved."; console.warn("Oma Pulse:", e); }
+            var incoming = text();
+            // Our own atomic write fires a file event; do not re-parse it.
+            if (!Logic.shouldAdopt(incoming, root.lastPersisted, root.ready, root.error)) return;
+            try {
+                var state = Logic.parse(incoming);
+                root.workspace = state;
+                root.lastPersisted = Logic.serialize(state);
+                root.error = "";
+                root.ready = true;
+                root.changed(false, true);
+            } catch (e) {
+                root.error = "Could not read saved workspace. Original file preserved.";
+                console.warn("Saturn:", e);
+            }
         }
         onLoadFailed: { if (root.storagePrepared) root.error = "Workspace file unavailable. Check " + root.dataDir; }
         onSaveFailed: { root.error = "Saving failed. Keep this workspace open and check disk space."; }
@@ -258,7 +276,7 @@ Item {
                 root.changed(false);
                 if (result === "finished") {
                     root.notice = "Session complete. Take a breath.";
-                    Quickshell.execDetached(["notify-send", "Oma Pulse · Focus complete", root.workspace.focus.title]);
+                    Quickshell.execDetached(["notify-send", "Saturn · Focus complete", root.workspace.focus.title]);
                 } else if (result === "paused") root.notice = "Focus paused while the desktop was away.";
                 if (result !== "running" || Math.floor(root.workspace.focus.elapsed) % 5 === 0) root.flush();
             }
@@ -307,7 +325,7 @@ Item {
         function tab(name: string): void { root.eachWindow(w => { w.workspacePanel.insights = name === "Insights"; w.pinned = true; w.open(); }); }
         function status(): string {
             var panels = []; root.eachWindow(w => panels.push({screen: w.screen.name, expanded: w.expanded, dashboard: w.dashboardOpen, command: w.commandOpen, timerPopout: w.timerPopout.visible, tab: w.currentTab, hovered: w.hovered}));
-            return JSON.stringify({ready: root.ready, error: root.error, tasks: root.tasks.length, remaining: root.remainingTasks, taskSource: root.taskSource, mailSource: root.mailSource, calendarSource: root.calendarSource, todoistConnected: todoistController.connected, todoistBusy: todoistController.busy, todoistError: todoistController.error, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});
+            return JSON.stringify({ready: root.ready, error: root.error, schema: root.workspace.version, tasks: root.tasks.length, remaining: root.remainingTasks, taskSource: root.taskSource, mailSource: root.mailSource, calendarSource: root.calendarSource, todoistConnected: todoistController.connected, todoistBusy: todoistController.busy, todoistError: todoistController.error, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});
         }
         function messages(): void { root.eachWindow(w => { w.pinned=true; w.open(); w.workspacePanel.messagesOpen=true; }); }
         function connections(): void { root.eachWindow(w => { w.pinned=true; w.open(); w.workspacePanel.connectionsOpen=true; }); }
@@ -323,7 +341,8 @@ Item {
         function grokStatus(): string { return JSON.stringify({configured:root.grokVoice.configured,ready:root.grokVoice.ready,enabled:root.grokVoice.listeningEnabled,state:root.grokVoice.phase,duplex:root.grokVoice.duplex,latencyMs:root.grokVoice.latencyMs,error:root.grokVoice.error}); }
         function voiceStatus(): string { return JSON.stringify({enabled:root.voiceActive,state:root.activeVoicePhase,provider:root.activeVoiceName,wakeEnabled:root.grokVoice.wakeEnabled,localEnabled:false,grokEnabled:root.grokVoice.listeningEnabled,error:root.grokVoice.error}); }
     }
-    Control { target: "omapulse" }
-    Control { target: "omaowl" } // Compatibility for existing shortcuts.
+    Control { target: "saturn" }
+    Control { target: "omapulse" } // Deprecated aliases for existing shortcuts.
+    Control { target: "omaowl" }
     Component.onDestruction: flush()
 }

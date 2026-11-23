@@ -89,7 +89,7 @@ Item {
         case "set_volume": return "Set volume · " + action.number + "%";
         case "search_files": return "Find files named · " + action.value;
         case "open_file": return "Open file · " + action.value;
-        case "show_pulse": return action.value === "close" ? "Close Pulse" : "Open Pulse · " + action.value;
+        case "show_pulse": return action.value === "close" ? "Close Saturn" : "Open Saturn · " + action.value;
         case "switch_workspace": return "Switch to workspace " + action.number;
         case "media_control": return "Media · " + action.value;
         case "mute_audio": return action.value === "on" ? "Mute audio" : "Unmute audio";

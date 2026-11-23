@@ -15,7 +15,7 @@ PanelWindow {
     implicitWidth: 330
     implicitHeight: 60
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "omaowl-timer"
+    WlrLayershell.namespace: "saturn-timer"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     color: "transparent"

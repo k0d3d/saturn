@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "kosta.omaowl",
-  "name": "Oma Pulse",
-  "version": "0.7.1",
-  "author": "Kosta / therealasclepius",
-  "description": "A themed desktop command center with Codex, voice input, tasks, focus, calendar, and a choice of mail providers.",
+  "id": "k0d3d.saturn",
+  "name": "Saturn",
+  "version": "0.8.0",
+  "author": "k0d3d",
+  "description": "A themed Omarchy workspace for tasks, notes, focus, calendar and mail.",
   "kinds": [
     "service",
     "bar-widget"
@@ -14,9 +14,9 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Oma Pulse",
+    "displayName": "Saturn",
     "category": "Productivity",
     "allowMultiple": false,
-    "defaultSection": "center"
+    "defaultSection": "centerEnd"
   }
 }

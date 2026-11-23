@@ -1,9 +1,9 @@
 {
-  "name": "oma-pulse",
-  "version": "0.7.1",
+  "name": "saturn",
+  "version": "0.8.0",
   "private": true,
   "license": "UNLICENSED",
-  "description": "A native Omarchy workspace for tasks, focus, notes, calendar, mail and an assistant.",
+  "description": "A native, local-first Omarchy workspace for tasks, notes, focus, calendar and mail.",
   "scripts": {
     "build:site": "node scripts/build-site.cjs",
     "check": "python3 scripts/check.py",

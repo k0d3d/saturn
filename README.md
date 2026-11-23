@@ -1,52 +1,52 @@
-# Oma Pulse
+# Saturn
 
 **Your day, within reach.** A native workspace for Omarchy: tasks, focus, daily notes, calendar, mail and a desktop assistant.
 
-[Website & interactive preview](https://oma-pulse.vercel.app/) · [Releases](https://github.com/therealasclepius/oma-pulse/releases) · [Report an issue](https://github.com/therealasclepius/oma-pulse/issues)
+[Website & interactive preview](https://saturn.vercel.app/) · [Releases](https://github.com/k0d3d/saturn/releases) · [Report an issue](https://github.com/k0d3d/saturn/issues)
 
-Oma Pulse runs inside Omarchy's Quickshell desktop. Hover over its bar icon for a quick look, click to pin it, or right-click for the full workspace. It follows your current theme. An application-menu launcher opens the same native workspace. This is an Omarchy Linux plugin, not an Electron wrapper or a cross-platform standalone app.
+Saturn runs inside Omarchy's Quickshell desktop. Hover over its bar icon for a quick look, click to pin it, or right-click for the full workspace. It follows your current theme. An application-menu launcher opens the same native workspace. This is an Omarchy Linux plugin, not an Electron wrapper or a cross-platform standalone app.
 
 ## Installation
 
 Requires **Omarchy with its plugin-capable Quickshell shell** (tested on Omarchy 4.0.4), Git, Python 3.11+, Qt Quick Controls and `notify-send`. Omarchy supplies the desktop dependencies. Local tasks, notes and focus need no account. Node.js is only used for website development.
 
 ```sh
-curl -fsSL https://oma-pulse.vercel.app/install.sh | bash
+curl -fsSL https://saturn.vercel.app/install.sh | bash
 ```
 
-[Inspect the installer](install.sh). It clones the public repository, validates the manifest, enables `kosta.omaowl`, and installs a user-local application launcher. It never uses sudo, changes keyboard shortcuts or includes account credentials.
+[Inspect the installer](install.sh). It clones the public repository, validates the manifest, enables `k0d3d.saturn`, and installs a user-local application launcher. It never uses sudo, changes keyboard shortcuts or includes account credentials.
 
 Alternatively, use Omarchy's plugin manager:
 
 ```sh
-omarchy plugin add https://github.com/therealasclepius/oma-pulse.git --enable
-bash ~/.config/omarchy/plugins/kosta.omaowl/scripts/install-desktop.sh
+omarchy plugin add https://github.com/k0d3d/saturn.git --enable
+bash ~/.config/omarchy/plugins/k0d3d.saturn/scripts/install-desktop.sh
 ```
 
-The plugin also initializes its storage when installed directly through the plugin manager. Open **Oma Pulse** in the application menu, or run `omapulse`.
+The plugin also initializes its storage when installed directly through the plugin manager. Open **Saturn** in the application menu, or run `saturn`.
 
 ### Updating and removing
 
 ```sh
-omarchy plugin update kosta.omaowl
+omarchy plugin update k0d3d.saturn
 ```
 
 If a QML dependency remains cached, run `omarchy restart shell` after updating. Your local tasks, notes, credentials and focus history are stored outside the plugin directory.
 
-Disable with `omarchy plugin disable kosta.omaowl`; remove with `omarchy plugin remove kosta.omaowl`. To remove launcher files too, remove `~/.local/bin/omapulse`, the legacy `~/.local/bin/omaowl` alias, `$XDG_DATA_HOME/applications/omapulse.desktop` and `$XDG_DATA_HOME/icons/hicolor/scalable/apps/omapulse.svg` (data home defaults to `~/.local/share`). User data is deliberately retained.
+Disable with `omarchy plugin disable k0d3d.saturn`; remove with `omarchy plugin remove k0d3d.saturn`. To remove launcher files too, remove `~/.local/bin/saturn`, the deprecated `~/.local/bin/omapulse` and `~/.local/bin/omaowl` aliases, `$XDG_DATA_HOME/applications/saturn.desktop` and `$XDG_DATA_HOME/icons/hicolor/scalable/apps/saturn.svg` (data home defaults to `~/.local/share`). User data is deliberately retained.
 
-Existing local prototype: download and inspect `install.sh`, then run `bash install.sh --adopt`. This moves the old plugin into `$XDG_DATA_HOME/omaowl-backups/` before replacement, preserving your existing plugin ID, bar placement, shortcuts, workspace and connection files. Ordinary installation refuses to overwrite an existing plugin.
+Upgrading from Oma Pulse (`kosta.omaowl`): remove the old id with `omarchy plugin remove kosta.omaowl` (keeps your data), then install Saturn. On first start Saturn migrates `~/.local/share/omaowl/workspace.json` to `~/.local/share/saturn/workspace.json` (schema 2) with a timestamped backup under `$XDG_DATA_HOME/omaowl-backups/`, and copies private credentials from `~/.config/omaowl` and `~/.config/oma-pulse` into `~/.config/saturn`. The originals are never deleted. For a local prototype, inspect `install.sh` and run `bash install.sh --adopt`. Ordinary installation refuses to overwrite an existing plugin.
 
 ### Keyboard shortcut
 
-Bind `omapulse command` in your Hyprland bindings using a key you choose. Existing Super+N bindings from the local prototype continue to work; a fresh install does not claim that shortcut. `omapulse dashboard` opens full screen; Escape returns to the compact workspace.
+Bind `saturn command` in your Hyprland bindings using a key you choose. Existing Super+N bindings from the local prototype continue to work; a fresh install does not claim that shortcut. `saturn dashboard` opens full screen; Escape returns to the compact workspace.
 
 On this workstation, **Super+Alt+N** opens the full dashboard. Its binding is
-`o.bind("SUPER + ALT + N", "Oma Pulse full dashboard", "omapulse dashboard")`.
+`o.bind("SUPER + ALT + N", "Saturn full dashboard", "saturn dashboard")`.
 
-## Renamed from Oma Owl
+## Formerly Oma Pulse / Oma Owl
 
-Oma Pulse is the new name from version 0.6.0. The original GitHub URL redirects to the new repository, and the old website redirects to the new site. The plugin identifier `kosta.omaowl` and `omaowl` data directories intentionally remain stable so updates preserve accounts, notes and bar placement. Existing `omaowl` commands and IPC shortcuts still work; new installations also provide `omapulse`. Run the desktop installer once after updating to refresh your app-menu name and icon.
+Version 0.8.0 renames the project to **Saturn** and the plugin id to `k0d3d.saturn`. Data and credentials migrate automatically as described above. The deprecated `omapulse` and `omaowl` commands and IPC aliases keep existing shortcuts working for one release; new shortcuts should use `saturn`. Run the desktop installer once to refresh the app-menu name and icon.
 
 ## Connections
 
@@ -71,7 +71,7 @@ The HEY adapter expects the CLI's `box view imbox --json`, `seen` / `unseen`, an
 
 The **Workspace** tab includes a Messages card next to mail, with unread counts,
 scrollable previews, refresh, and an **Open messages** button. Open **Messages**
-(or run `omapulse messages`) for the full unread conversation view.
+(or run `saturn messages`) for the full unread conversation view.
 
 Message sources default to **Text messages (Blip)** only. Use **Sources** in the
 workspace Messages widget, Messages page, or Connections to enable **Slack (via
@@ -136,14 +136,14 @@ or replace an API key. Use your own Todoist account; no credentials are bundled.
   Existing local tasks are preserved and are never uploaded automatically.
 
 The API key is stored separately from the workspace in
-`${XDG_CONFIG_HOME:-~/.config}/omaowl/todoist.json`, mode 600, inside a private
+`${XDG_CONFIG_HOME:-~/.config}/saturn/todoist.json`, mode 600, inside a private
 directory. It never enters process arguments or shell.json. Network calls go
 only to `https://api.todoist.com/api/v1/`. Requests follow the
 [official Todoist API](https://developer.todoist.com/api/v1/).
 
-Disconnect removes Oma Pulse's local credential; it does not delete Todoist data.
+Disconnect removes Saturn's local credential; it does not delete Todoist data.
 Completed Todoist tasks remain in Todoist history; this UI currently shows active
-tasks only. Insights counts tasks completed through Oma Pulse, not all Todoist history.
+tasks only. Insights counts tasks completed through Saturn, not all Todoist history.
 
 ## Calendar
 
@@ -151,7 +151,7 @@ Use ‹ / › in the Events card to switch days, and **Back to today** to reset.
 The date and full day's events change together. Arrows stop at the limits of
 OmaCal's feed, currently today plus seven days. Event times use OmaCal's published
 clock labels where available. Calendar access is read only; synchronization is
-managed by OmaCal. No extra calendar account connection is needed for the OmaCal source. Alternatively, select Google Calendar in Connections and sign in directly; the default is your primary calendar. Clicking an event opens the selected full calendar on that day and closes Oma Pulse. Weekday names appear above dates.
+managed by OmaCal. No extra calendar account connection is needed for the OmaCal source. Alternatively, select Google Calendar in Connections and sign in directly; the default is your primary calendar. Clicking an event opens the selected full calendar on that day and closes Saturn. Weekday names appear above dates.
 
 ## Focus and notes
 
@@ -179,13 +179,13 @@ and appending notes. Results are shown after execution. It can answer questions 
 but this version does not send mail, modify arbitrary system settings, or execute generated shell code.
 
 **Voice** uses the existing Voxtype daemon. Click again to stop; the transcript fills the input
-for review before submission. Optional **Hey Pulse** adds hands-free commands and spoken replies; see below. Closing the
-window cancels an active Oma Pulse recording. Codex can use live web search for weather, news, and current facts. Answers include source links. Desktop tool access stays disabled, with an isolated
+for review before submission. Optional **Hey Saturn** adds hands-free commands and spoken replies; see below. Closing the
+window cancels an active Saturn recording. Codex can use live web search for weather, news, and current facts. Answers include source links. Desktop tool access stays disabled, with an isolated
 working directory; it only proposes actions, which the app validates and runs for direct requests.
 
-## Hey Pulse voice control
+## Hey Saturn voice control
 
-Say **“Hey Pulse”**, then your request. A short two-note chime confirms it heard you. The wake phrase is detected locally with
+Say **“Hey Saturn”**, then your request. A short two-note chime confirms it heard you. The wake phrase is detected locally with
 Vosk and confirmed locally with Whisper; no local voice or planner answers it.
 After confirmation, a Grok voice session starts. A bounded RAM buffer preserves
 the wake phrase and request during connection setup, then audio streams directly
@@ -211,52 +211,52 @@ tells you when the agent finishes or needs approval; agents keep their own
 permission settings. A message to Grok Bot is typed into its window, so its
 reply is read there, not aloud.
 
-Enable **Connections → Hey Pulse · Wake Grok**, or `omapulse voiceWakeEnable`.
+Enable **Connections → Hey Saturn · Wake Grok**, or `saturn voiceWakeEnable`.
 The enabled preference survives desktop restarts. Continue a conversation without
 repeating the wake phrase. After a minute of silence or five minutes of cloud
 conversation, cloud audio stops and local wake detection rearms. Locking or
 starting dictation ends cloud streaming and pauses local wake detection.
 **Escape** or asking Grok to end the conversation stops cloud audio and rearms
-Hey Pulse; while it is only armed, Escape does nothing. **Shift+Escape** or
-**Mic off** turns the microphone off entirely. Enable Hey Pulse again to rearm it.
+Hey Saturn; while it is only armed, Escape does nothing. **Shift+Escape** or
+**Mic off** turns the microphone off entirely. Enable Hey Saturn again to rearm it.
 
 Wake mode is built to stay on. A dropped network, a rejected session or a
-microphone that disappears ends only that conversation: Hey Pulse reports the
+microphone that disappears ends only that conversation: Hey Saturn reports the
 problem and keeps listening, retrying the microphone with a short backoff. If the
 listener itself dies, the shell restarts it. The setting survives shell restarts.
 
 **Ctrl+Alt+P** starts a direct Grok conversation when voice is off and stops voice
 when it is on. **Stop reply** interrupts only the current answer. The bar tooltip
-shows **Hey Pulse → Grok** when wake mode is enabled. `omapulse voiceStatus`
+shows **Hey Saturn → Grok** when wake mode is enabled. `saturn voiceStatus`
 reports mode and state without transcripts. The older local spoken-reply process
 is no longer started by Pulse.
 
-Examples: “Hey Pulse, what's the weather?”, “Hey Pulse, open my browser”, or
-“Hey Pulse, start a twenty five minute timer.” The saved weather location and
+Examples: “Hey Saturn, what's the weather?”, “Hey Saturn, open my browser”, or
+“Hey Saturn, start a twenty five minute timer.” The saved weather location and
 Grok's tools work identically in wake and keyboard-started conversations.
 
 Wake detection pauses while other applications play audible audio. Pause music
-or video before saying Hey Pulse. The playback guard only measures output levels
+or video before saying Hey Saturn. The playback guard only measures output levels
 in RAM; it does not save or transcribe playback audio.
 
 The desktop shortcut passes Escape through to the active application as usual:
 
 ```lua
-o.bind("ESCAPE", "End Pulse conversation", "omapulse voiceStop", { non_consuming = true })
-o.bind("SHIFT + ESCAPE", "Turn Pulse microphone off", "omapulse voiceDisable")
-o.bind("CTRL + ALT + P", "Toggle Pulse microphone", "omapulse voiceToggle")
+o.bind("ESCAPE", "End Pulse conversation", "saturn voiceStop", { non_consuming = true })
+o.bind("SHIFT + ESCAPE", "Turn Pulse microphone off", "saturn voiceDisable")
+o.bind("CTRL + ALT + P", "Toggle Pulse microphone", "saturn voiceToggle")
 ```
 
 To install this optional feature on another machine:
 
 ```sh
 python3 scripts/setup-voice.py
-omapulse voiceEnable
+saturn voiceEnable
 ```
 
 Requires Voxtype with the local `base.en` Whisper model, `parec`, `paplay`, `pactl`, and
 an active logind desktop session. Setup downloads Vosk’s small English model
-and Piper’s British English Alan voice into `${XDG_DATA_HOME:-~/.local/share}/oma-pulse-voice`
+and Piper’s British English Alan voice into `${XDG_DATA_HOME:-~/.local/share}/saturn-voice`
 with an isolated Python environment. English is currently supported. Startup
 can take a few seconds; failures appear in Connections. Wake recognition depends
 on microphone quality, distance and background speech; it is not speaker verification.
@@ -290,24 +290,28 @@ use subtle theme tints, and the workspace, command bar, and focus notch have squ
 
 ## Storage
 
-`${XDG_DATA_HOME:-~/.local/share}/omaowl/workspace.json` contains local tasks,
-notes, timer state, and activity. Copy it to back up or export. Writes are atomic;
+`${XDG_DATA_HOME:-~/.local/share}/saturn/workspace.json` is the local-first source of truth:
+tasks (including due dates and archived items), daily notes, the tagged note library,
+timer state, activity, sync metadata and insights. It uses schema 2 and is migrated
+automatically from older versions. Copy it to back up or export. Writes are atomic;
 notes save after 300 ms and active timers checkpoint about every five seconds.
-Closing the workspace also saves. Invalid saved workspace data is preserved
-instead of silently overwritten. Todoist active tasks are fetched from the server.
+The shell watches the file for external edits and ignores its own write events, so an
+agent can update data without a shell restart. Invalid saved workspace data is preserved
+instead of silently overwritten. Credentials stay separately under
+`${XDG_CONFIG_HOME:-~/.config}/saturn/` with private permissions.
 
 ## Commands
 
 ```sh
-omarchy-shell omapulse toggle
-omarchy-shell omapulse command
-omarchy-shell omapulse assistant
-omarchy-shell omapulse open
-omarchy-shell omapulse dashboard
-omarchy-shell omapulse close
-omarchy-shell omapulse status
-omarchy plugin disable kosta.omaowl
-omarchy plugin enable kosta.omaowl
+omarchy-shell saturn toggle
+omarchy-shell saturn command
+omarchy-shell saturn assistant
+omarchy-shell saturn open
+omarchy-shell saturn dashboard
+omarchy-shell saturn close
+omarchy-shell saturn status
+omarchy plugin disable k0d3d.saturn
+omarchy plugin enable k0d3d.saturn
 ```
 
 `open` pins the workspace; `toggle` toggles the command bar. `dashboard` opens full screen on the first
@@ -334,14 +338,14 @@ omarchy plugin validate .
 
 ## License and credits
 
-Publicly viewable source; no open-source license is granted at this time (`UNLICENSED`), following Oma Beats' distribution model. Barlow is used under the included SIL Open Font License. The original workspace concept was inspired by NotchOwl; Oma Pulse is an independent project, not affiliated with Omarchy or its connected services.
+Publicly viewable source; no open-source license is granted at this time (`UNLICENSED`), following Oma Beats' distribution model. Barlow is used under the included SIL Open Font License. The original workspace concept was inspired by NotchOwl; Saturn is an independent project, not affiliated with Omarchy or its connected services.
 ## Grok live voice
 
 In **Connections → Grok live**, save an xAI API key and click **Start Grok live**.
 This streams microphone audio to xAI while the session is active and plays Grok's
 audio as it arrives. It uses separately billed xAI API usage, not Cursor Ultra.
-**Hey Pulse** starts this same Grok conversation after a local wake check.
-**Ctrl+Alt+P**, `omapulse voiceEnable`, and `omapulse voiceToggle` now use Grok by
+**Hey Saturn** starts this same Grok conversation after a local wake check.
+**Ctrl+Alt+P**, `saturn voiceEnable`, and `saturn voiceToggle` now use Grok by
 default. There is no fallback to the older local voice. Wake mode returns to local
 wake detection after an idle timeout; it does not keep cloud audio running.
 
@@ -367,15 +371,15 @@ event until the first audio is handed to local playback. It excludes the server'
 speech-end detection delay and the sound system's final buffering, so it is not a
 full mouth-to-ear measurement. Compare several short conversational turns.
 
-The key lives at `$XDG_CONFIG_HOME/oma-pulse/grok-api-key` (normally
-`~/.config/oma-pulse/grok-api-key`) with mode `0600`, outside the plugin and
+The key lives at `$XDG_CONFIG_HOME/saturn/grok-api-key` (normally
+`~/.config/saturn/grok-api-key`) with mode `0600`, outside the plugin and
 workspace JSON. `XAI_API_KEY` in the process environment takes precedence.
 Audio is held in RAM; this prototype does not save recordings or conversation
 transcripts to disk. Pulse's normal assistant handles delegated requests.
 
 The existing voice environment already includes WebSockets. On another machine,
 run `python3 scripts/setup-grok-voice.py`; `parec`, `paplay`, and `loginctl` are also
-required. CLI: `omapulse grokStart`, `omapulse grokStop`, `omapulse grokStatus`.
+required. CLI: `saturn grokStart`, `saturn grokStop`, `saturn grokStatus`.
 `pactl` and PipeWire's WebRTC echo-cancellation module enable spoken interruption.
 Developer check: `grok_voice.py weather-probe` verifies the weather answer without
 opening the microphone or playing audio; it uses a small amount of xAI API usage.

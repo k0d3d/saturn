@@ -20,7 +20,7 @@ from pulse_voice import unlocked
 KINDS = ('claude', 'codex', 'opencode', 'grok', 'gemini', 'hermes', 'cursor', 'pi', 'copilot')
 GROK_BOT = 'grok_bot'
 # Holds the name of the user's main Grok Bot bot; messages go to it unless another bot is named.
-BOT_FILE = Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'oma-pulse/grok-bot'
+BOT_FILE = Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'saturn/grok-bot'
 TASK_LIMIT = 2000
 WAIT_MS = 900000
 DONE = ('idle', 'done', 'blocked')
@@ -88,18 +88,18 @@ def find(target):
 
 def start(kind):
     """Open a fresh agent in its own Herdr tab without taking the user's focus."""
-    tab = herdr('tab', 'create', '--label', 'pulse', '--no-focus')
+    tab = herdr('tab', 'create', '--label', 'saturn', '--no-focus')
     tab_id = (tab.get('tab') or tab).get('tab_id')
     pane = next((pane['pane_id'] for pane in herdr('pane', 'list').get('panes', []) if tab_id and pane.get('tab_id') == tab_id), '')
     if not pane:
         raise AssistantError('Herdr opened a tab but did not report its pane.')
     try:
-        herdr('agent', 'start', 'pulse-'+re.sub(r'[^a-z0-9]', '', tab_id.lower()), '--kind', kind, '--pane', pane, '--timeout', '45000', timeout=60)
+        herdr('agent', 'start', 'saturn-'+re.sub(r'[^a-z0-9]', '', tab_id.lower()), '--kind', kind, '--pane', pane, '--timeout', '45000', timeout=60)
     except AssistantError as error:
         # A first run may stop at the agent's own sign-in or trust question; that is the user's to answer.
-        raise AssistantError('The new '+kind.capitalize()+' in the Herdr tab "pulse" is not ready: '+str(error)
+        raise AssistantError('The new '+kind.capitalize()+' in the Herdr tab "saturn" is not ready: '+str(error)
                              + ' Open it, answer what it asks, then give it the task.') from None
-    return {'pane': pane, 'tab': 'pulse', 'kind': kind, 'status': 'idle', 'title': ''}
+    return {'pane': pane, 'tab': 'saturn', 'kind': kind, 'status': 'idle', 'title': ''}
 
 
 def choose(agent, fresh=False):
@@ -120,7 +120,7 @@ def choose(agent, fresh=False):
 def announce(label, task):
     """Show what was handed off, so a misheard task is visible straight away."""
     try:
-        subprocess.Popen(['notify-send', '-a', 'Oma Pulse', 'Sent to '+label, task[:600]], stdin=subprocess.DEVNULL,
+        subprocess.Popen(['notify-send', '-a', 'Saturn', 'Sent to '+label, task[:600]], stdin=subprocess.DEVNULL,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     except OSError:
         pass
@@ -204,7 +204,7 @@ def save_default_bot(spoken):
         except AssistantError as error:
             raise ValueError(str(error)) from None
         if not bot:
-            raise ValueError('No Grok Bot bot is called "'+spoken.strip()+'". Open Grok Bot once so Pulse can see your bots.')
+            raise ValueError('No Grok Bot bot is called "'+spoken.strip()+'". Open Grok Bot once so Saturn can see your bots.')
         saved = bot['name']
     BOT_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     BOT_FILE.write_text(saved+'\n')
@@ -245,4 +245,4 @@ def grok_bot(task, bot=None):
     command(['wtype', '--', task], allow_empty=True)
     time.sleep(0.2)
     command(['wtype', '-k', 'Return'], allow_empty=True)
-    return 'Sent to '+(bot['name']+' in ' if bot else '')+'the Grok Bot app. The reply appears in the Grok Bot window; Pulse cannot read it.'
+    return 'Sent to '+(bot['name']+' in ' if bot else '')+'the Grok Bot app. The reply appears in the Grok Bot window; Saturn cannot read it.'

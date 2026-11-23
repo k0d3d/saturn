@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Renamed the project to **Saturn** and the plugin id to `k0d3d.saturn`; `saturn` is the new command, with deprecated `omapulse` and `omaowl` aliases for one release.
+- Migrated local data to `~/.local/share/saturn/` with schema 2: dated/archivable tasks, a tagged note library, sync metadata and an insights hook. Original data is backed up, never deleted.
+- Migrated private credentials from `~/.config/omaowl` and `~/.config/oma-pulse` into `~/.config/saturn`, preserving permissions.
+- The shell now watches the workspace file and adopts external edits without echoing its own atomic writes back.
+- Updated launcher, icon, app-menu entry, manifest, documentation and website copy for the new name.
+
 ## 0.7.1
 
 - Fixed Todoist helpers waiting for input EOF, which could leave syncing stuck and task checkboxes disabled.

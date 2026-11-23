@@ -7,7 +7,7 @@ import qs.Ui
 
 BarWidget {
     id: root
-    moduleName: "kosta.omaowl"
+    moduleName: "k0d3d.saturn"
     Theme { id: voiceTheme }
     readonly property var service: bar && bar.shell && typeof bar.shell.serviceFor === "function" ? bar.shell.serviceFor(moduleName) : null
     readonly property string screenName: QsWindow.window && QsWindow.window.screen ? QsWindow.window.screen.name : ""
@@ -21,7 +21,7 @@ BarWidget {
     readonly property string voicePhase: service ? service.activeVoicePhase : (remoteState.voicePhase || "off")
     readonly property string voiceName: service ? service.activeVoiceName : (remoteState.voiceName || "Grok live")
     function remoteAction(action) {
-        Quickshell.execDetached(["omarchy-shell", "omapulse", "barAction", screenName, action]);
+        Quickshell.execDetached(["omarchy-shell", "saturn", "barAction", screenName, action]);
         refreshAfterAction.restart();
     }
     function refreshState() { if (!service && !stateProcess.running) stateProcess.running = true; }
@@ -31,7 +31,7 @@ BarWidget {
     onScreenNameChanged: refreshState()
     Process {
         id: stateProcess
-        command: ["omarchy-shell", "omapulse", "barState", root.screenName]
+        command: ["omarchy-shell", "saturn", "barState", root.screenName]
         stdout: StdioCollector {
             onStreamFinished: { try { root.remoteState = JSON.parse(text); } catch (e) {} }
         }
@@ -44,10 +44,10 @@ BarWidget {
         id: button
         anchors.fill: parent
         bar: root.bar
-        iconComponent: Component { Image { source: Qt.resolvedUrl("assets/omapulse.svg"); fillMode: Image.PreserveAspectFit } }
+        iconComponent: Component { Image { source: Qt.resolvedUrl("assets/saturn.svg"); fillMode: Image.PreserveAspectFit } }
         active: root.opened || root.focusRunning
         interactive: true
-        tooltipText: (root.focusRunning ? "Oma Pulse · " + (root.service ? root.service.timerText : root.remoteState.timer) : "Oma Pulse · Tasks, focus, notes and calendar") + "\n" + root.voiceName + " · " + (root.voiceEnabled ? root.voicePhase : "off") + "\nEsc: end Grok · Ctrl+Alt+P: toggle Grok"
+        tooltipText: (root.focusRunning ? "Saturn · " + (root.service ? root.service.timerText : root.remoteState.timer) : "Saturn · Tasks, focus, notes and calendar") + "\n" + root.voiceName + " · " + (root.voiceEnabled ? root.voicePhase : "off") + "\nEsc: end Grok · Ctrl+Alt+P: toggle Grok"
         onTooltipHoveredChanged: {
             if (tooltipHovered && !root.opened) hoverTimer.restart();
             else hoverTimer.stop();

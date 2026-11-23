@@ -43,7 +43,7 @@ PanelWindow {
     implicitWidth: compact ? Math.min(1880, screen.width - 32) : screen.width
     implicitHeight: compact ? Math.min(520, screen.height - 80) : screen.height
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: compact ? "omaowl-workspace" : "omaowl-dashboard"
+    WlrLayershell.namespace: compact ? "saturn-workspace" : "saturn-dashboard"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: visible ? (compact ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive) : WlrKeyboardFocus.None
     color: "transparent"
@@ -101,10 +101,10 @@ PanelWindow {
             spacing: 25
             RowLayout {
                 Layout.fillWidth: true
-                Image { Layout.preferredWidth: 46; Layout.preferredHeight: 46; source: Qt.resolvedUrl("assets/omapulse.svg"); fillMode: Image.PreserveAspectFit }
+                Image { Layout.preferredWidth: 46; Layout.preferredHeight: 46; source: Qt.resolvedUrl("assets/saturn.svg"); fillMode: Image.PreserveAspectFit }
                 ColumnLayout {
                     spacing: 3
-                    Label { text: "Oma Pulse"; color: theme.text; font.pixelSize: 27; font.weight: Font.DemiBold }
+                    Label { text: "Saturn"; color: theme.text; font.pixelSize: 27; font.weight: Font.DemiBold }
                     Label { text: "A little room for your day."; color: theme.muted; font.pixelSize: 13 }
                 }
                 Item { Layout.fillWidth: true }

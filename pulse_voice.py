@@ -18,7 +18,7 @@ import threading
 import time
 import wave
 
-DATA = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) / 'oma-pulse-voice'
+DATA = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) / 'saturn-voice'
 MODELS = DATA / 'models'
 WAKE_MODEL = MODELS / 'vosk-model-small-en-us-0.15'
 VOICE_MODEL = MODELS / 'en_GB-alan-medium.onnx'
@@ -35,9 +35,9 @@ WAKE_VERIFY_TIMEOUT = 10
 # Only complete, bounded control phrases can skip Whisper. Free dictation,
 # compound requests and uncertain words retain the higher-quality second pass.
 FAST_PATTERNS = [
-    r'(?:open|show|go to) (?:(?:my|the|oma|pulse) )?(?:pulse|workspace|messages|assistant|connections|insights|notepad|notes|dashboard)',
+    r'(?:open|show|go to) (?:(?:my|the|oma|saturn) )?(?:saturn|workspace|messages|assistant|connections|insights|notepad|notes|dashboard)',
     r'open (?:(?:my|the) )?(?:browser|terminal|file manager|files|hey|todoist|calendar)',
-    r'(?:close|hide|dismiss) (?:oma )?pulse',
+    r'(?:close|hide|dismiss) (?:oma )?saturn',
     r'(?:mute|unmute)(?: (?:the )?(?:sound|audio|volume))?',
     r'(?:switch to|go to|show) workspace (?:one|two|three|four|five|six|seven|eight|nine|ten)',
     r'(?:play|resume|pause|stop) (?:the )?(?:music|media|playback)',
@@ -67,25 +67,25 @@ def emit(event, **values):
 
 
 def wake_found(text):
-    return bool(re.search(r'\bhey\s+pulse\b', str(text).lower()))
+    return bool(re.search(r'\bhey\s+saturn\b', str(text).lower()))
 
 
 def confirmed_wake(text):
-    # Whisper sometimes spells Pulse as polls/pulls. Accept those narrow
+    # Whisper sometimes spells Saturn as polls/pulls. Accept those narrow
     # phonetic spellings, but not nearby names such as Paul or ordinary mentions.
-    return bool(re.match(r'^\s*hey[\s,]+(?:pulse|polls|pulls)\b', str(text), re.I))
+    return bool(re.match(r'^\s*hey[\s,]+(?:saturn|polls|pulls)\b', str(text), re.I))
 
 
 def wake_spoken(text):
     # Always-on listening hears whatever came just before the wake phrase, so
     # the phrase may sit anywhere in this short clip, not only at its start.
-    return bool(re.search(r'\bhey[\s,]+(?:pulse|polls|pulls)\b', str(text), re.I))
+    return bool(re.search(r'\bhey[\s,]+(?:saturn|polls|pulls)\b', str(text), re.I))
 
 
 def command_text(text):
-    # The wake recognizer must independently hear “hey pulse” first. Allow
+    # The wake recognizer must independently hear “hey saturn” first. Allow
     # these phonetic spellings only in the second, command transcription pass.
-    match = re.match(r'^\s*hey[\s,]+(?:pulse|pulls|polls)\b[\s,.!?:-]*(.*)$', str(text), re.I | re.S)
+    match = re.match(r'^\s*hey[\s,]+(?:saturn|pulls|polls)\b[\s,.!?:-]*(.*)$', str(text), re.I | re.S)
     return match[1].strip()[:2000] if match else ''
 
 
@@ -95,13 +95,13 @@ def transcript_output(text):
 
 
 def spoken_text(text):
-    text = re.sub(r'```.*?```', 'Code is shown in Pulse.', str(text), flags=re.S)
+    text = re.sub(r'```.*?```', 'Code is shown in Saturn.', str(text), flags=re.S)
     text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
-    text = re.sub(r'https?://\S+', 'link shown in Pulse', text)
+    text = re.sub(r'https?://\S+', 'link shown in Saturn', text)
     text = re.sub(r'[*_`#]+', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
     if len(text) > 320:
-        text = text[:280].rsplit(' ', 1)[0] + '. More details are in Pulse.'
+        text = text[:280].rsplit(' ', 1)[0] + '. More details are in Saturn.'
     return text
 
 
@@ -137,7 +137,7 @@ def output_audible(monitor):
     process = None
     try:
         process = subprocess.Popen(['parec', '--raw', '--format=s16le', '--rate=16000', '--channels=1',
-                                    '--device='+str(monitor), '--latency-msec=25', '--client-name=Pulse playback guard'],
+                                    '--device='+str(monitor), '--latency-msec=25', '--client-name=Saturn playback guard'],
                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         data=bytearray(); deadline=time.monotonic()+0.5
         while len(data) < 3200:
@@ -165,7 +165,7 @@ def playback_active():
         if result.returncode: return True
         streams = json.loads(result.stdout)
         active=[stream for stream in streams if not stream.get('corked', True) and not stream.get('mute', False)
-                   and stream.get('properties', {}).get('application.name') != 'Pulse voice'
+                   and stream.get('properties', {}).get('application.name') != 'Saturn voice'
                    and any(channel.get('value', 0) > 0 for channel in stream.get('volume', {}).values())]
         if not active: return False
         result=subprocess.run(['pactl','-f','json','list','sinks'],capture_output=True,text=True,timeout=1)
@@ -190,7 +190,7 @@ def transcribe(pcm, timeout=35):
     data = io.BytesIO()
     with wave.open(data, 'wb') as wav:
         wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(RATE); wav.writeframes(pcm)
-    fd = os.memfd_create('pulse-command', os.MFD_CLOEXEC)
+    fd = os.memfd_create('saturn-command', os.MFD_CLOEXEC)
     try:
         os.write(fd, data.getvalue()); os.lseek(fd, 0, os.SEEK_SET)
         result = subprocess.run(['voxtype', '-q', '--engine', 'whisper', '--model', 'base.en', '--language', 'en',
@@ -208,7 +208,7 @@ class Listener:
         from vosk import Model, KaldiRecognizer, SetLogLevel
         SetLogLevel(-1)
         self.model = Model(str(WAKE_MODEL))
-        self.recognizer = KaldiRecognizer(self.model, RATE, json.dumps(['hey pulse', '[unk]']))
+        self.recognizer = KaldiRecognizer(self.model, RATE, json.dumps(['hey saturn', '[unk]']))
         self.command_recognizer = KaldiRecognizer(self.model, RATE)
         self.command_recognizer.SetWords(True)
         self.command_parts = []
@@ -332,8 +332,8 @@ class Listener:
         with self.speech_lock:
             follow_up=follow_up and not self.stopping.is_set() and (generation is None or generation == self.speech_generation)
             self.followup_until=time.monotonic()+FOLLOWUP_SECONDS if follow_up else 0
-        if follow_up: emit('state',state='followup',text='Your turn — reply now, no “Hey Pulse” needed (15 seconds)')
-        else: emit('state',state='armed',text='Say “Hey Pulse”')
+        if follow_up: emit('state',state='followup',text='Your turn — reply now, no “Hey Saturn” needed (15 seconds)')
+        else: emit('state',state='armed',text='Say “Hey Saturn”')
 
     def speak(self, text, generation=None, follow_up=False):
         text = spoken_text(text)
@@ -341,7 +341,7 @@ class Listener:
         with self.speech_lock:
             if generation is not None and generation != self.speech_generation:
                 self.waiting=False
-                emit('state', state='armed', text='Say “Hey Pulse”')
+                emit('state', state='armed', text='Say “Hey Saturn”')
                 return
             self.speech_cancelled.clear()
         self.reset()
@@ -358,7 +358,7 @@ class Listener:
                     if self.speech_cancelled.is_set(): break
                     if self.playback is None:
                         self.playback = subprocess.Popen(['paplay', '--raw', '--format=s16le', '--rate=' + str(chunk.sample_rate),
-                                                         '--channels=1', '--client-name=Pulse voice'], stdin=subprocess.PIPE,
+                                                         '--channels=1', '--client-name=Saturn voice'], stdin=subprocess.PIPE,
                                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 self.playback.stdin.write(chunk.audio_int16_bytes)
                 self.playback.stdin.flush()
@@ -371,7 +371,7 @@ class Listener:
                 if self.playback.wait(timeout=35): raise RuntimeError('Audio output unavailable.')
         except Exception:
             if not self.speech_cancelled.is_set() and not self.stopping.is_set():
-                emit('error', error='Pulse could not speak. Check your audio output.')
+                emit('error', error='Saturn could not speak. Check your audio output.')
         finally:
             if self.playback and self.playback.poll() is None: self.playback.terminate()
             self.playback = None
@@ -382,11 +382,11 @@ class Listener:
     def run(self):
         self.prepare_voice()
         self.capture = subprocess.Popen(['parec', '--raw', '--format=s16le', '--rate=16000', '--channels=1',
-            '--latency-msec=100', '--client-name=Pulse wake listener'],
+            '--latency-msec=100', '--client-name=Saturn wake listener'],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         threading.Thread(target=self.read_audio, daemon=True).start()
         threading.Thread(target=self.read_controls, daemon=True).start()
-        emit('state', state='armed', text='Say “Hey Pulse”')
+        emit('state', state='armed', text='Say “Hey Saturn”')
         gate_at=0; blocked=False; last_state=''; pause_reason=''
         try:
             while not self.stopping.is_set():
@@ -410,7 +410,7 @@ class Listener:
                     self.reset()
                     if last_state != pause_reason: emit('state',state='paused',text=pause_reason)
                     last_state=pause_reason; self.stopping.wait(0.1); continue
-                if last_state.startswith('Paused'): emit('state',state='armed',text='Say “Hey Pulse”')
+                if last_state.startswith('Paused'): emit('state',state='armed',text='Say “Hey Saturn”')
                 last_state='active'
                 try: data=self.audio.get(timeout=0.1)
                 except queue.Empty: continue
@@ -478,11 +478,11 @@ class Listener:
                             else: text=fast_command(self.command_parts) or command_text(transcribe(pcm))
                             if text and self.recording_generation == self.speech_generation and not self.stopping.is_set() and unlocked() and not dictation_busy() and not self.playback_blocked():
                                 self.waiting=True; emit('transcript',text=text,follow_up=self.is_followup)
-                            else: emit('state',state='armed',text='Say “Hey Pulse”, then your command')
+                            else: emit('state',state='armed',text='Say “Hey Saturn”, then your command')
                         except Exception:
-                            emit('error',error='Could not understand that. Say “Hey Pulse” and try again.')
+                            emit('error',error='Could not understand that. Say “Hey Saturn” and try again.')
                         finally: self.reset()
-            if not self.stopping.is_set(): emit('error',error='Pulse microphone capture stopped.')
+            if not self.stopping.is_set(): emit('error',error='Saturn microphone capture stopped.')
         finally:
             self.stop()
             if self.capture:
@@ -492,7 +492,7 @@ class Listener:
 
 def check():
     ready=WAKE_MODEL.is_dir() and VOICE_MODEL.is_file() and all(shutil.which(name) for name in ('parec','paplay','pactl','voxtype'))
-    return {'ready':bool(ready),'error':'' if ready else 'Run the Pulse voice setup script first.'}
+    return {'ready':bool(ready),'error':'' if ready else 'Run the Saturn voice setup script first.'}
 
 
 def main():
@@ -512,9 +512,9 @@ def main():
     status=check()
     if not status['ready']: emit('error',error=status['error']); return
     runtime=Path(os.environ.get('XDG_RUNTIME_DIR','/run/user/'+str(os.getuid())))
-    with (runtime/'oma-pulse-voice.lock').open('w') as lock:
+    with (runtime/'saturn-voice.lock').open('w') as lock:
         try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        except BlockingIOError: emit('error',error='Pulse voice is already running.'); return
+        except BlockingIOError: emit('error',error='Saturn voice is already running.'); return
         listener=Listener()
         signal.signal(signal.SIGTERM,listener.stop); signal.signal(signal.SIGINT,listener.stop)
         listener.run()
@@ -522,4 +522,4 @@ def main():
 
 if __name__ == '__main__':
     try: main()
-    except Exception: emit('error',error='Pulse voice could not start. Check voice setup and microphone access.')
+    except Exception: emit('error',error='Saturn voice could not start. Check voice setup and microphone access.')

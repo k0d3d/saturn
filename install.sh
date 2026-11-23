@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # User-local installation. Review before running. Never requests sudo.
 set -euo pipefail
-repo='https://github.com/therealasclepius/oma-pulse.git'
-plugin_id='kosta.omaowl'
+repo='https://github.com/k0d3d/saturn.git'
+plugin_id='k0d3d.saturn'
 local_source=false
 adopt=false
 enable=true
@@ -31,7 +31,7 @@ fi
 omarchy plugin validate "$stage/plugin"
 if [[ -e "$target" || -L "$target" ]]; then
   if ! $adopt; then
-    echo "Oma Pulse is already installed at $target." >&2
+    echo "Saturn is already installed at $target." >&2
     echo "Update with: omarchy plugin update $plugin_id" >&2
     echo 'To replace a local prototype and keep a backup, rerun with --adopt.' >&2
     exit 1
@@ -47,7 +47,7 @@ python3 "$target/initialize.py"
 bash "$target/scripts/install-desktop.sh"
 if $enable; then
   if ! omarchy-shell shell rescanPlugins >/dev/null; then
-    echo "Reloading the shell to finish registering Oma Pulse…"
+    echo "Reloading the shell to finish registering Saturn…"
     omarchy restart shell
   fi
   for ((attempt = 0; attempt < 40; attempt++)); do
@@ -56,4 +56,4 @@ if $enable; then
   done
   omarchy plugin enable "$plugin_id"
 fi
-printf '\nOma Pulse is installed. Run: omapulse\nUpdates: omarchy plugin update %s\n' "$plugin_id"
+printf '\nSaturn is installed. Run: saturn\nUpdates: omarchy plugin update %s\n' "$plugin_id"

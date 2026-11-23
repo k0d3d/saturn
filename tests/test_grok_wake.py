@@ -18,7 +18,7 @@ class Recognizer:
     def AcceptWaveform(self, data):
         return False
     def PartialResult(self):
-        return json.dumps({'partial':'hey pulse'})
+        return json.dumps({'partial':'hey saturn'})
 
 
 class WakeTests(unittest.IsolatedAsyncioTestCase):
@@ -39,7 +39,7 @@ class WakeTests(unittest.IsolatedAsyncioTestCase):
         capture = wake.WakeCapture(None, Recognizer)
         for data in [b'wake', *[b'tail']*6, b'question']:
             capture.queue.put_nowait(data)
-        with patch.object(wake, 'unlocked', return_value=True), patch.object(wake, 'dictation_busy', return_value=False), patch.object(wake, 'playback_active', return_value=False), patch.object(wake, 'transcribe', return_value='Hey Pulse, what is the weather?'), patch.object(wake, 'emit') as output:
+        with patch.object(wake, 'unlocked', return_value=True), patch.object(wake, 'dictation_busy', return_value=False), patch.object(wake, 'playback_active', return_value=False), patch.object(wake, 'transcribe', return_value='Hey Saturn, what is the weather?'), patch.object(wake, 'emit') as output:
             self.assertTrue(await capture.wait(asyncio.Event()))
         self.assertIn('wake', [call.args[0] for call in output.call_args_list])
         self.assertEqual(await capture.finish(), b'wake'+b'tail'*6+b'question')
@@ -63,24 +63,24 @@ class WakeTests(unittest.IsolatedAsyncioTestCase):
             def AcceptWaveform(self, data):
                 self.last = data; return False
             def PartialResult(self):
-                return json.dumps({'partial': 'hey pulse' if self.last in (b'noise', b'wake') else ''})
+                return json.dumps({'partial': 'hey saturn' if self.last in (b'noise', b'wake') else ''})
         capture = wake.WakeCapture(None, Hears)
         for data in [b'noise', b'wake', *[b'tail']*6, b'question']:
             capture.queue.put_nowait(data)
         heard = []
         def check(pcm, **kwargs):
             heard.append(pcm)
-            return 'Hey Pulse, open Slack.' if len(heard) == 2 else 'Okay, let me check.'
+            return 'Hey Saturn, open Slack.' if len(heard) == 2 else 'Okay, let me check.'
         with patch.object(wake, 'unlocked', return_value=True), patch.object(wake, 'dictation_busy', return_value=False), patch.object(wake, 'playback_active', return_value=False), patch.object(wake, 'transcribe', side_effect=check), patch.object(wake, 'emit'):
             self.assertTrue(await capture.wait(asyncio.Event()))
         self.assertTrue(heard[1].startswith(b'noisewake'))
         self.assertIn(b'question', await capture.finish())
 
     async def test_wake_phrase_is_found_after_earlier_speech(self):
-        self.assertTrue(wake.wake_spoken('be fine for tomorrow. Hey Pulse, open Slack'))
+        self.assertTrue(wake.wake_spoken('be fine for tomorrow. Hey Saturn, open Slack'))
         self.assertTrue(wake.wake_spoken('Hey, polls.'))
         self.assertFalse(wake.wake_spoken('Hey Paul, open Slack'))
-        self.assertFalse(wake.wake_spoken('check my pulse'))
+        self.assertFalse(wake.wake_spoken('check my saturn'))
 
     async def test_key_press_starts_a_conversation_without_the_phrase(self):
         class Silent(Recognizer):

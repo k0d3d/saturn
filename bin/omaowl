@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
-# Legacy command retained for existing shortcuts.
+# Deprecated alias, kept for one release so existing shortcuts keep working.
 set -euo pipefail
-exec "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/omapulse" "$@"
+echo 'omaowl is deprecated; use saturn.' >&2
+exec "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/saturn" "$@"

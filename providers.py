@@ -66,7 +66,7 @@ def request(endpoint, *, token=None, data=None, form=None, method=None):
 
 def config_path(provider):
     if provider not in PROVIDERS: raise ProviderError('Unknown provider.')
-    return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home()/'.config')))/'omaowl'/'connections'/(provider+'.json')
+    return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home()/'.config')))/'saturn'/'connections'/(provider+'.json')
 
 def read_config(provider):
     try: return json.loads(config_path(provider).read_text())
@@ -141,7 +141,7 @@ def connect(provider, args):
                 self.send_error(400); return
             result.update({k:v[0] for k,v in params.items()})
             self.send_response(200); self.send_header('Content-Type','text/plain; charset=utf-8'); self.end_headers()
-            self.wfile.write(b'Return to Oma Pulse to finish connecting. You can close this tab.')
+            self.wfile.write(b'Return to Saturn to finish connecting. You can close this tab.')
     with http.server.HTTPServer(('127.0.0.1',0),Callback) as server:
         server.timeout=1; redirect=f'http://127.0.0.1:{server.server_port}/callback'
         params={'client_id':client,'redirect_uri':redirect,'response_type':'code','scope':PROVIDERS[provider][1],

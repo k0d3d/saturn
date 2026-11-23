@@ -23,7 +23,7 @@ from grok_audio import EchoAudio
 import agents
 from assistant import AssistantError, validate
 
-KEY_FILE = Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'oma-pulse/grok-api-key'
+KEY_FILE = Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'saturn/grok-api-key'
 URL = 'wss://api.x.ai/v1/realtime?model=grok-voice-latest'
 RATE = 24000
 SESSION_SECONDS = 300
@@ -34,7 +34,7 @@ DIRECT = ['open_app', 'focus_app', 'open_url', 'list_windows', 'switch_workspace
           'set_volume', 'mute_audio', 'media_control', 'set_brightness', 'toggle_setting', 'set_theme',
           'next_wallpaper', 'screenshot', 'lock_screen', 'type_text', 'system_status', 'search_files', 'open_file',
           'start_focus', 'pause_focus', 'resume_focus', 'add_task', 'append_note', 'show_pulse']
-INSTRUCTIONS = """You are Pulse, Kosta's desktop voice assistant: quick, capable and calm, like a
+INSTRUCTIONS = """You are Saturn, Kosta's desktop voice assistant: quick, capable and calm, like a
 trusted aide who runs this computer. Speak naturally in one short sentence unless asked for more.
 Act first, then confirm briefly. Do not ask permission for things the user just asked for, and
 do not narrate what you are about to do.
@@ -110,7 +110,7 @@ TOOLS = [
      'parameters': {'type': 'object', 'properties': {'topic': {'type': 'string', 'enum': ['calendar', 'tasks', 'note', 'inbox']}},
                     'required': ['topic'], 'additionalProperties': False}},
     {'type': 'function', 'name': 'pulse_request',
-     'description': 'Ask the Pulse assistant about the user\'s tasks, calendar, notes or inbox, or to complete a task or set a reminder. Slower than desktop_actions. Not for weather or web search.',
+     'description': 'Ask the Saturn assistant about the user\'s tasks, calendar, notes or inbox, or to complete a task or set a reminder. Slower than desktop_actions. Not for weather or web search.',
      'parameters': {'type': 'object', 'properties': {'request': {'type': 'string'}},
                     'required': ['request'], 'additionalProperties': False}},
     {'type': 'function', 'name': 'list_agents', 'description': 'List the AI agents running on this computer and what each is doing.',
@@ -140,7 +140,7 @@ async def agent_update(finished, hit):
         text = str(error)
     headline = text.split('. ')[0]
     with contextlib.suppress(OSError):
-        await asyncio.create_subprocess_exec('notify-send', '-a', 'Oma Pulse', headline, stdin=asyncio.subprocess.DEVNULL,
+        await asyncio.create_subprocess_exec('notify-send', '-a', 'Saturn', headline, stdin=asyncio.subprocess.DEVNULL,
                                              stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
     session = LIVE
     if session and not session.stop.is_set():
@@ -270,7 +270,7 @@ class Session:
     async def microphone(self):
         self.capture = await asyncio.create_subprocess_exec(
             'parec', '--raw', '--format=s16le', '--rate='+str(self.input_rate), '--channels=1',
-            *(['--device='+self.audio.source] if self.audio.source else []), '--latency-msec=40', '--client-name=Pulse Grok microphone',
+            *(['--device='+self.audio.source] if self.audio.source else []), '--latency-msec=40', '--client-name=Saturn Grok microphone',
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
         while not self.stop.is_set():
             try:
@@ -297,7 +297,7 @@ class Session:
             if self.player is None:
                 player = await asyncio.create_subprocess_exec(
                     'paplay', '--raw', '--format=s16le', '--rate='+str(RATE), '--channels=1',
-                    *(['--device='+self.audio.sink] if self.audio.sink else []), '--latency-msec=40', '--client-name=Pulse voice',
+                    *(['--device='+self.audio.sink] if self.audio.sink else []), '--latency-msec=40', '--client-name=Saturn voice',
                     stdin=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
                 self.player = player
                 if generation != self.generation:
@@ -330,7 +330,7 @@ class Session:
             if event.get('name') == 'end_session':
                 if self.wake_capture:
                     # Always-on mode: ending a conversation returns to wake listening.
-                    emit('session_idle', text='Conversation ended. Say “Hey Pulse” to talk again.')
+                    emit('session_idle', text='Conversation ended. Say “Hey Saturn” to talk again.')
                 else:
                     self.end_requested = True
                     emit('ended', text='Grok conversation ended. Microphone off.')
@@ -354,7 +354,7 @@ class Session:
                 if not isinstance(request, str) or not request.strip() or len(request) > 2000:
                     raise ValueError()
             if self.pending or self.working:
-                result = {'ok': False, 'text': 'Pulse is already handling a request. Wait for its result.'}
+                result = {'ok': False, 'text': 'Saturn is already handling a request. Wait for its result.'}
             elif event.get('name') == 'desktop_actions':
                 self.working = True
                 try:
@@ -370,7 +370,7 @@ class Session:
                 finally:
                     self.working = False
             else:
-                emit('state', state='thinking', text='Pulse is handling your request…')
+                emit('state', state='thinking', text='Saturn is handling your request…')
                 result = await self.ask_pulse(call_id, 90, text=request)
         except AssistantError as error:
             result = {'ok': False, 'text': str(error)}
@@ -454,7 +454,7 @@ class Session:
         try:
             return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError:
-            return {'ok': False, 'text': 'Pulse timed out. The action may still be running; do not retry automatically.'}
+            return {'ok': False, 'text': 'Saturn timed out. The action may still be running; do not retry automatically.'}
         finally:
             self.pending.pop(key, None)
 
@@ -522,7 +522,7 @@ class Session:
     def tool_done(self, task):
         self.tool_tasks.discard(task)
         if not task.cancelled() and task.exception():
-            emit('error', error='Grok disconnected while handling a Pulse request.')
+            emit('error', error='Grok disconnected while handling a Saturn request.')
             self.stop.set()
 
     async def handle_control(self, control):
@@ -622,7 +622,7 @@ async def listen():
         raise RuntimeError('Unlock the desktop and stop dictation before starting Grok.')
     key = api_key()
     if not key:
-        raise RuntimeError('Add your xAI API key in Pulse → Connections → Grok live.')
+        raise RuntimeError('Add your xAI API key in Saturn → Connections → Grok live.')
     emit('state', state='starting', text='Connecting to Grok…')
     async with connect(URL, additional_headers={'Authorization': 'Bearer '+key},
                        open_timeout=10, close_timeout=2, max_size=2**22) as ws:
@@ -638,7 +638,7 @@ async def probe(weather=False):
     from websockets.asyncio.client import connect
     key = api_key()
     if not key:
-        raise RuntimeError('Save your xAI API key in Pulse Connections first.')
+        raise RuntimeError('Save your xAI API key in Saturn Connections first.')
     async with connect(URL, additional_headers={'Authorization': 'Bearer '+key},
                        open_timeout=10, close_timeout=2, max_size=2**22) as ws:
         config = session_config()
@@ -653,7 +653,7 @@ async def probe(weather=False):
                 if event.get('type') == 'session.updated':
                     break
         await ws.send(json.dumps({'type': 'conversation.item.create', 'item': {
-            'type': 'message', 'role': 'user', 'content': [{'type': 'input_text', 'text': "What's the weather?" if weather else 'Say only: Pulse is ready.'}]}}))
+            'type': 'message', 'role': 'user', 'content': [{'type': 'input_text', 'text': "What's the weather?" if weather else 'Say only: Saturn is ready.'}]}}))
         started = time.monotonic()
         await ws.send(json.dumps({'type': 'response.create'}))
         first_ms = None

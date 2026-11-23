@@ -3,7 +3,7 @@ function action(kind, value, number) {
 }
 function confirmation(a) {
     switch(a.kind) {
-    case "show_pulse": return a.value === "close" ? "Pulse closed." : (a.value === "workspace" ? "Workspace" : a.value.charAt(0).toUpperCase()+a.value.slice(1))+" open.";
+    case "show_pulse": return a.value === "close" ? "Saturn closed." : (a.value === "workspace" ? "Workspace" : a.value.charAt(0).toUpperCase()+a.value.slice(1))+" open.";
     case "start_focus": return a.number+" minute timer started.";
     case "pause_focus": return "Timer paused.";
     case "resume_focus": return "Timer resumed.";
@@ -27,10 +27,10 @@ function confirmation(a) {
 function parse(question, today) {
     var text = String(question).trim().replace(/[.!?]$/, ""), match;
     text = text.replace(/^(?:(?:can|could|would) you\s+)?(?:please\s+)?/i, "").replace(/,?\s+please$/i, "");
-    text = text.replace(/^(?:hey\s+)?pulse[,\s]+/i, "");
-    match = text.match(/^(?:open|show|go to)\s+(?:(?:my|the|oma|pulse)\s+)?(pulse|workspace|messages|assistant|connections|insights|notepad|notes|dashboard)$/i);
-    if (match) return action("show_pulse",/^(pulse|dashboard|notepad|notes)$/i.test(match[1]) ? "workspace" : match[1].toLowerCase());
-    if (/^(?:close|hide|dismiss)\s+(?:oma\s+)?pulse$/i.test(text)) return action("show_pulse","close");
+    text = text.replace(/^(?:hey\s+)?saturn[,\s]+/i, "");
+    match = text.match(/^(?:open|show|go to)\s+(?:(?:my|the|oma|saturn)\s+)?(saturn|workspace|messages|assistant|connections|insights|notepad|notes|dashboard)$/i);
+    if (match) return action("show_pulse",/^(saturn|dashboard|notepad|notes)$/i.test(match[1]) ? "workspace" : match[1].toLowerCase());
+    if (/^(?:close|hide|dismiss)\s+(?:oma\s+)?saturn$/i.test(text)) return action("show_pulse","close");
     if (/^(?:mute|unmute)(?:\s+(?:the\s+)?(?:sound|audio|volume))?$/i.test(text)) return action("mute_audio",/^unmute/i.test(text) ? "off" : "on");
     match = text.match(/^(?:switch to|go to|show)\s+workspace\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)$/i);
     if (match) return action("switch_workspace","",spokenNumber(match[1]));

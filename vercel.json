@@ -53,7 +53,7 @@
           "value": "oma-owl.vercel.app"
         }
       ],
-      "destination": "https://oma-pulse.vercel.app/:path*",
+      "destination": "https://saturn.vercel.app/:path*",
       "permanent": true
     }
   ]

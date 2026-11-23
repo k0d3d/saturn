@@ -220,7 +220,7 @@ class RealtimeTests(unittest.IsolatedAsyncioTestCase):
 
     def test_main_bot_is_saved_by_full_name_and_unknown_names_are_refused(self):
         with tempfile.TemporaryDirectory() as folder, \
-             patch.object(grok.agents, 'BOT_FILE', Path(folder)/'oma-pulse/grok-bot'), \
+             patch.object(grok.agents, 'BOT_FILE', Path(folder)/'saturn/grok-bot'), \
              patch.object(grok.agents, 'bots', return_value=[{'id': 'b1', 'name': 'Forge'}, {'id': 'b3', 'name': 'Zeus (Chief of Staff)'}]):
             self.assertEqual(grok.agents.default_bot(), '')
             self.assertEqual(grok.agents.save_default_bot(' zeus '), 'Zeus (Chief of Staff)')

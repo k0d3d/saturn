@@ -16,7 +16,7 @@ PanelWindow {
     margins.top: Style.bar.sizeHorizontal+12
     implicitWidth: 480; implicitHeight: content.implicitHeight+30
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "oma-pulse-voice"
+    WlrLayershell.namespace: "saturn-voice"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     color: "transparent"
@@ -26,7 +26,7 @@ PanelWindow {
         id:content; anchors.left:parent.left; anchors.right:parent.right; anchors.top:parent.top; anchors.margins:15; spacing:7
         RowLayout {
             Rectangle { implicitWidth:8; implicitHeight:8; radius:4; color:hud.voice.phase === "error" ? theme.urgent : theme.accent }
-            Text { text:"Pulse"; font.family:theme.font; font.pixelSize:16; font.bold:true; color:theme.text; Layout.fillWidth:true }
+            Text { text:"Saturn"; font.family:theme.font; font.pixelSize:16; font.bold:true; color:theme.text; Layout.fillWidth:true }
             Button { visible:hud.liveConversation || ["speaking","followup","listening"].indexOf(hud.voice.phase) >= 0; text:hud.liveConversation ? "End chat · Esc" : "Stop · Esc"; implicitHeight:28; onClicked: hud.voice.stopSpeaking() }
             Button { text:"Mic off"; implicitHeight:28; onClicked:hud.voice.setEnabled(false) }
         }

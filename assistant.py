@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Oma Pulse's Codex planner and explicit, bounded desktop actions."""
+"""Saturn's Codex planner and explicit, bounded desktop actions."""
 import configparser
 from datetime import datetime
 import json
@@ -17,7 +17,7 @@ from voice_context import desktop_context
 
 HERE = Path(__file__).resolve().parent
 HOME = Path.home()
-RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / ("omaowl-" + str(os.getuid()))
+RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / ("saturn-" + str(os.getuid()))
 KINDS = ["start_focus", "pause_focus", "resume_focus", "add_task", "complete_task", "remind_task",
          "append_note", "show_day", "open_app", "open_url", "set_volume", "search_files", "open_file",
          "show_pulse", "switch_workspace", "media_control", "mute_audio", "window_control",
@@ -33,7 +33,7 @@ SCHEMA = {"type": "object", "additionalProperties": False, "required": ["answer"
         "type": "object", "additionalProperties": False, "required": ["kind", "value", "number", "task_id"],
         "properties": {"kind": {"type": "string", "enum": KINDS}, "value": {"type": "string"},
                        "number": {"type": "integer"}, "task_id": {"type": "string"}}}}}}
-INSTRUCTIONS = """You are Oma Pulse, a personal desktop assistant for Omarchy Linux.
+INSTRUCTIONS = """You are Saturn, a personal desktop assistant for Omarchy Linux.
 Answer questions and propose concrete actions from the supported list. You may use web search for information, but never execute desktop actions yourself
 or claim an action has happened. Set auto_run=true when the current user explicitly asks you to perform
 supported actions (including polite requests such as "can you set a timer?"). The app runs those actions
@@ -69,7 +69,7 @@ timestamp WITH timezone. Interpret user times in the supplied local timezone. Ne
 append_note: value = text to append to today's notepad. show_day: value = YYYY-MM-DD within available calendar days.
 open_app: value = installed desktop app ID or name from context, or alias browser, terminal, files, hey, calendar, todoist.
 open_url: value = full http(s) URL. set_volume: number = 0..100 percent.
-show_pulse: value = workspace, messages, assistant, connections, insights, or close. Opens that Oma Pulse view.
+show_pulse: value = workspace, messages, assistant, connections, insights, or close. Opens that Saturn view.
 switch_workspace: number = desktop workspace 1..10. media_control: value = play, pause, next, previous.
 mute_audio: value = on or off. window_control: value = fullscreen, float, close (the focused window), or
 left, right, up, down (focus a neighboring window). move_window: number = workspace 1..10 for the focused window.
@@ -192,7 +192,7 @@ def plan(payload):
         settings = tomllib.loads((HOME/'.codex/config.toml').read_text())
         if isinstance(settings.get('model'), str): args += ['--model', settings['model']]
     except (OSError, ValueError): pass
-    with tempfile.TemporaryDirectory(prefix='omaowl-plan-', dir=RUNTIME) as temp:
+    with tempfile.TemporaryDirectory(prefix='saturn-plan-', dir=RUNTIME) as temp:
         folder = Path(temp); schema = folder/'schema.json'; output = folder/'reply.json'
         schema.write_text(json.dumps(SCHEMA))
         args += ['--cd', temp, '--output-schema', str(schema), '--output-last-message', str(output), '--color', 'never', '-']

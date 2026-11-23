@@ -1,4 +1,4 @@
-"""Local Hey Pulse detection handing buffered speech to a Grok session.
+"""Local Hey Saturn detection handing buffered speech to a Grok session.
 
 No local TTS or command planner. A bounded RAM buffer preserves speech while the
 cloud connection starts. One stdin reader owns control messages across sessions.
@@ -25,13 +25,13 @@ async def chime():
     """Confirm the wake phrase audibly. It ends before the cloud microphone opens."""
     with contextlib.suppress(OSError):
         await asyncio.create_subprocess_exec(
-            'paplay', '--client-name=Pulse wake chime', str(CHIME),
+            'paplay', '--client-name=Saturn wake chime', str(CHIME),
             stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
 
 
 class WakeCapture:
     def __init__(self, model, recognizer_type):
-        self.recognizer = recognizer_type(model, RATE, json.dumps(['hey pulse', '[unk]']))
+        self.recognizer = recognizer_type(model, RATE, json.dumps(['hey saturn', '[unk]']))
         self.queue = asyncio.Queue(maxsize=160)
         self.preroll = collections.deque(maxlen=30)
         self.pending = []
@@ -43,7 +43,7 @@ class WakeCapture:
         # No device is named, so the stream follows the system's default microphone when it changes.
         self.process = await asyncio.create_subprocess_exec(
             'parec', '--raw', '--format=s16le', '--rate='+str(RATE), '--channels=1',
-            '--latency-msec=100', '--client-name=Pulse Grok wake listener',
+            '--latency-msec=100', '--client-name=Saturn Grok wake listener',
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
         self.reader = asyncio.create_task(self.read())
 
@@ -82,7 +82,7 @@ class WakeCapture:
                 next_guard = time.monotonic()+0.5
                 if blocked != previous:
                     emit('state', state='paused' if blocked else 'armed',
-                         text='Wake listening paused while locked, dictating or playing audio' if blocked else 'Say “Hey Pulse” to talk to Grok')
+                         text='Wake listening paused while locked, dictating or playing audio' if blocked else 'Say “Hey Saturn” to talk to Grok')
                     previous = blocked
             if forced and forced.is_set():
                 # A key press stands in for the wake phrase, even while audio is playing.
@@ -138,7 +138,7 @@ class WakeCapture:
                     return True
                 self.reset()
                 continue
-            # A false alarm must not swallow a real "Hey Pulse" said right after it:
+            # A false alarm must not swallow a real "Hey Saturn" said right after it:
             # listen again to the audio that followed, and keep what arrived meanwhile.
             self.recognizer.Reset()
             self.pending = []
@@ -164,9 +164,9 @@ async def listen_for_wake(session_type, url, key):
     from vosk import Model, KaldiRecognizer, SetLogLevel
     from websockets.asyncio.client import connect
     if not key:
-        raise RuntimeError('Add your xAI key before enabling Hey Pulse.')
+        raise RuntimeError('Add your xAI key before enabling Hey Saturn.')
     if not WAKE_MODEL.is_dir():
-        raise RuntimeError('Run scripts/setup-voice.py to install the Hey Pulse wake model.')
+        raise RuntimeError('Run scripts/setup-voice.py to install the Hey Saturn wake model.')
     stopped = asyncio.Event()
     forced = asyncio.Event()
     active = None
@@ -204,7 +204,7 @@ async def listen_for_wake(session_type, url, key):
         SetLogLevel(-1)
         with contextlib.suppress(OSError, RuntimeError, asyncio.TimeoutError):
             await unload_stale()
-        emit('state', state='starting', text='Starting Hey Pulse for Grok…')
+        emit('state', state='starting', text='Starting Hey Saturn for Grok…')
         model = await asyncio.to_thread(Model, str(WAKE_MODEL))
         failures = 0
         while not stopped.is_set():
@@ -231,7 +231,7 @@ async def listen_for_wake(session_type, url, key):
                 if stopped.is_set():
                     break
                 failures += 1
-                emit('error', error=(str(exc) if isinstance(exc, RuntimeError) else 'Could not reach Grok.')+' Hey Pulse will keep listening.')
+                emit('error', error=(str(exc) if isinstance(exc, RuntimeError) else 'Could not reach Grok.')+' Hey Saturn will keep listening.')
                 with contextlib.suppress(asyncio.TimeoutError):
                     await asyncio.wait_for(stopped.wait(), min(30, 2**failures))
             finally:

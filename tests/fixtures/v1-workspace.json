@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "mwtfahfmsbvjt0",
+      "title": "Create Best Security Plugins for Omarchy",
+      "done": false,
+      "completedAt": 0
+    },
+    {
+      "id": "mwswpf9gc4qg3c",
+      "title": "Find Video Skills",
+      "done": true,
+      "completedAt": 1795416635190
+    }
+  ],
+  "notes": {
+    "2026-11-23": "Run Boxer 30 days campaign.\n"
+  },
+  "activity": {"2026-11-23": 900},
+  "focus": {"title": "Open focus", "duration": 1500, "elapsed": 300, "running": true},
+  "messageKeyOnly": false
+}

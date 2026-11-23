@@ -18,7 +18,7 @@ class FeedError(Exception):
 
 
 def config_path():
-    return Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'omaowl' / 'beeper.json'
+    return Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'saturn' / 'beeper.json'
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):

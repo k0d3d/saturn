@@ -1,6 +1,6 @@
 import QtQuick
 
-// Compatibility facade: Hey Pulse now wakes Grok. No local TTS process is used.
+// Compatibility facade: Hey Saturn now wakes Grok. No local TTS process is used.
 Item {
     required property var store
     readonly property bool listeningEnabled: store.grokVoice.wakeEnabled

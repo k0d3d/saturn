@@ -5,7 +5,7 @@ import Quickshell.Io
 Item {
     id: root
     required property var store
-    readonly property string voiceHome: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME")+"/.local/share")+"/oma-pulse-voice"
+    readonly property string voiceHome: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME")+"/.local/share")+"/saturn-voice"
     readonly property string script: Qt.resolvedUrl("grok_voice.py").toString().replace("file://", "")
     readonly property bool wakeEnabled: store.ready && store.workspace.voiceEnabled === true
     property string sessionMode: "listen"
@@ -54,13 +54,13 @@ Item {
     function startSession(mode) {
         if(!canStart) { error="Add your xAI key and finish voice setup first."; return; }
         if(store.assistant.busy || store.assistant.recording) {
-            // Wake mode simply starts once Pulse is free; only a manual start reports it.
-            if(mode !== "wake") { error="Wait for the current Pulse request to finish."; failed=true; }
+            // Wake mode simply starts once Saturn is free; only a manual start reports it.
+            if(mode !== "wake") { error="Wait for the current Saturn request to finish."; failed=true; }
             return;
         }
         sessionMode=mode;
         error=""; heard=""; latencyMs=-1; duplex=false; failed=false; phase="starting";
-        statusText=mode === "wake" ? "Starting Hey Pulse for Grok…" : "Connecting to Grok…";
+        statusText=mode === "wake" ? "Starting Hey Saturn for Grok…" : "Connecting to Grok…";
         listeningEnabled=true; overlayVisible=mode !== "wake"; session.running=true;
     }
     function setEnabled(value) {
@@ -80,14 +80,14 @@ Item {
         phase="off"; statusText=text; overlayVisible=false;
         if(session.running) { stopping=true; stopTimer.restart(); }
     }
-    // Ends the live conversation only. Wake mode stays saved, so Hey Pulse rearms
+    // Ends the live conversation only. Wake mode stays saved, so Hey Saturn rearms
     // once the session exits; while merely armed there is nothing to end.
     function endConversation() {
         if(!wakeEnabled) { setEnabled(false); return; }
-        if(overlayVisible) stopSession("Rearming Hey Pulse…");
+        if(overlayVisible) stopSession("Rearming Hey Saturn…");
     }
     // One key for everything, never turning always-on listening off: end the
-    // current conversation, start one without the wake phrase, or switch Hey Pulse on.
+    // current conversation, start one without the wake phrase, or switch Hey Saturn on.
     function talk() {
         if(overlayVisible) endConversation();
         else if(!wakeEnabled) enableWake();
@@ -111,12 +111,12 @@ Item {
             control({type:"tool_result",call_id:result.call_id,ok:!!text,text:text || "That information is unavailable right now."}); return;
         }
         if(pendingCall || store.assistant.busy || store.assistant.recording) {
-            control({type:"tool_result",call_id:result.call_id,ok:false,text:"Pulse is busy. Try again when the current request finishes."}); return;
+            control({type:"tool_result",call_id:result.call_id,ok:false,text:"Saturn is busy. Try again when the current request finishes."}); return;
         }
         pendingCall=result.call_id;
         // The existing parser, action validation and execution stay authoritative.
         if(!(result.action ? store.assistant.run(result.action) : store.assistant.ask(result.text, false))) {
-            control({type:"tool_result",call_id:pendingCall,ok:false,text:"Pulse could not start that request."}); pendingCall="";
+            control({type:"tool_result",call_id:pendingCall,ok:false,text:"Saturn could not start that request."}); pendingCall="";
         }
     }
     Connections {

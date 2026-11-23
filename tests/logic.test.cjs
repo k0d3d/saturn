@@ -9,7 +9,66 @@ test("old workspaces migrate and running sessions resume paused", () => {
   state.focus.running = true;
   const restored = context.parse(JSON.stringify(state));
   assert.equal(restored.focus.running, false);
-  assert.equal(restored.version, 1);
+  assert.equal(restored.version, 2);
+  assert.equal(restored.focus.running, false);
+});
+test("v1 workspaces gain dated, archivable tasks and empty v2 collections", () => {
+  const fixture = JSON.parse(
+    fs.readFileSync("tests/fixtures/v1-workspace.json", "utf8"),
+  );
+  const state = context.parse(JSON.stringify(fixture));
+  assert.equal(state.version, 2);
+  assert.equal(state.tasks.length, 2);
+  assert.equal(state.tasks[0].due, null);
+  assert.equal(state.tasks[0].createdAt, 0);
+  assert.equal(state.tasks[0].archived, false);
+  assert.equal(JSON.stringify(state.tasks[0].tags), "[]");
+  assert.equal(state.tasks[1].createdAt, 1795416635190);
+  assert.equal(JSON.stringify(state.notesV2), "[]");
+  assert.equal(JSON.stringify(state.sync), '{"providers":{},"conflicts":[],"tombstones":[]}');
+  assert.equal(JSON.stringify(state.insights), "{}");
+  assert.equal(state.messageKeyOnly, false);
+  assert.equal(state.focus.running, false);
+});
+test("v2 fields are validated and invalid due dates are dropped", () => {
+  const state = context.fresh();
+  state.tasks.push({ id: "t", title: "Tomorrow", done: false, completedAt: 0 });
+  state.notesV2.push({ id: "n", title: "Note", body: "Body", date: "2026-11-24", tags: ["work"] });
+  let restored = context.parse(JSON.stringify(state));
+  assert.equal(restored.tasks[0].due, null);
+  assert.equal(restored.notesV2[0].date, "2026-11-24");
+  state.tasks[0].due = "2026-11-25";
+  restored = context.parse(JSON.stringify(state));
+  assert.equal(restored.tasks[0].due, "2026-11-25");
+  state.tasks[0].due = "tomorrow";
+  assert.equal(context.parse(JSON.stringify(state)).tasks[0].due, null);
+  state.tasks[0].archived = "yes";
+  assert.throws(() => context.parse(JSON.stringify(state)));
+});
+test("own writes are ignored but external edits are adopted", () => {
+  const state = context.fresh();
+  const payload = context.serialize(state);
+  assert.equal(context.shouldAdopt(payload, payload, true, ""), false);
+  assert.equal(context.shouldAdopt(payload + " ", payload, true, ""), true);
+  assert.equal(context.shouldAdopt(payload, payload, false, ""), true);
+  assert.equal(context.shouldAdopt(payload, payload, true, "error"), true);
+  assert.equal(context.needsWrite(state, payload), false);
+  state.tasks.push({ id: "t", title: "New", done: false, completedAt: 0 });
+  assert.equal(context.needsWrite(state, payload), true);
+});
+test("an external edit wins over a pending local save", () => {
+  const original = context.fresh();
+  const persisted = context.serialize(original);
+  const local = context.fresh();
+  local.tasks.push({ id: "local", title: "Local edit", done: false, completedAt: 0 });
+  assert.equal(context.needsWrite(local, persisted), true); // save queued
+  const external = context.fresh();
+  external.tasks.push({ id: "agent", title: "Agent edit", done: false, completedAt: 0 });
+  const incoming = context.serialize(external);
+  assert.equal(context.shouldAdopt(incoming, persisted, true, ""), true);
+  const adopted = context.parse(incoming);
+  assert.equal(context.needsWrite(adopted, context.serialize(adopted)), false); // queued flush is a no-op
+  assert.equal(adopted.tasks[0].id, "agent");
 });
 test("stored task source is preserved and unknown source is rejected", () => {
   const state = context.fresh();

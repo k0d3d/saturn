@@ -13,8 +13,8 @@ import urllib.request
 import uuid
 
 BASE = "https://api.todoist.com/api/v1/"
-CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "omaowl"
-DATA = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "omaowl"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "saturn"
+DATA = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "saturn"
 
 
 class ApiError(Exception):
