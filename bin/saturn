@@ -4,8 +4,8 @@ action="${1:-open}"
 case "$action" in
   tasks)
     shift
-    sub="${1:-list}"; a="${2:-}"; b="${3:-}"; c="${4:-}"
-    exec_shell_command=(omarchy-shell saturn tasks "$sub" "$a" "$b" "$c")
+    sub="${1:-list}"; a="${2:-}"; b="${3:-}"
+    exec_shell_command=(omarchy-shell saturn tasks "$sub" "$a" "$b")
     ;;
   notes)
     shift
