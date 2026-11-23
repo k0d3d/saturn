@@ -87,6 +87,10 @@ class VaultSyncTests(unittest.TestCase):
         path.write_text(vault.render(meta, body + '\nAdded in vault'))
         self.assertTrue(self.call('pull')['pulled'])
         self.assertIn('Added in vault', self.state()['notes']['2026-11-23'])
+        path.write_text(vault.render(meta, body))
+        self.call('pull')
+        self.assertEqual(self.state()['notes']['2026-11-23'], body)
+        self.assertEqual(self.state()['sync']['conflicts'], [])
 
     def test_two_sided_change_is_conflict_and_local_wins(self):
         self.call('push')

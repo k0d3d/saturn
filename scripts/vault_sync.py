@@ -202,6 +202,7 @@ def apply_incoming(state, meta, body):
                               'local': 'workspace', 'vault': 'markdown'})
             del conflicts[:-200]
             return False
+        sync.setdefault('vault', {}).setdefault('daily', {})[day] = body
         base[item_id] = updated
         return True
     if kind not in {'task', 'note'}:
