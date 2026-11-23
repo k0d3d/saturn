@@ -98,8 +98,16 @@ Item {
             Copy { text: strings.t("notes.title"); font.pixelSize: 24; font.bold: true; Layout.fillWidth: false }
             Field { id: searchField; Layout.fillWidth: true; placeholderText: strings.t("notes.search"); onTextChanged: pane.query = text }
             RowLayout {
-                Btn { text: strings.t("notes.active"); background: Rectangle { radius: 3; color: !pane.showArchived ? theme.accent : theme.raised }; onClicked: pane.showArchived = false }
-                Btn { text: strings.t("notes.archived"); background: Rectangle { radius: 3; color: pane.showArchived ? theme.accent : theme.raised }; onClicked: pane.showArchived = true }
+                Btn {
+                    text: strings.t("notes.active")
+                    onClicked: pane.showArchived = false
+                    background: Rectangle { radius: 3; color: !pane.showArchived ? theme.accent : theme.raised }
+                }
+                Btn {
+                    text: strings.t("notes.archived")
+                    onClicked: pane.showArchived = true
+                    background: Rectangle { radius: 3; color: pane.showArchived ? theme.accent : theme.raised }
+                }
                 Btn { text: strings.t("notes.new"); onClicked: pane.create() }
                 Copy { text: strings.tn("notes.count", pane.results.length); color: theme.muted; font.pixelSize: 11; horizontalAlignment: Text.AlignRight }
             }
