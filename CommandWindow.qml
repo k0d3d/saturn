@@ -130,7 +130,7 @@ PanelWindow {
                         }
                     }
                 }
-                Label { visible: !win.query.trim() || (win.taskResults.length === 0 && win.noteResults.length === 0); text: strings.t("command.noResults"); color: theme.muted }
+                Label { visible: !!win.query.trim() && win.taskResults.length === 0 && win.noteResults.length === 0; text: strings.t("command.noResults"); color: theme.muted }
             }
         }
     }
