@@ -46,6 +46,14 @@ test("v2 fields are validated and invalid due dates are dropped", () => {
   state.tasks[0].archived = "yes";
   assert.throws(() => context.parse(JSON.stringify(state)));
 });
+test("calendar overlay excludes remote events already present in the provider feed", () => {
+  const feed = [{ id: "remote-1", title: "Meeting" }];
+  const workspace = [
+    { id: "local-1", source: "google", externalId: "remote-1", title: "Meeting" },
+    { id: "local-2", source: "local", externalId: null, title: "Local" },
+  ];
+  assert.equal(context.calendarOverlay(workspace, feed, "google").map(e => e.id).join(","), "local-2");
+});
 test("task views keep completed work visible and hide archived items", () => {
   const today = "2026-11-23";
   const tasks = [

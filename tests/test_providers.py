@@ -19,6 +19,11 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(path.parent.stat().st_mode&0o777,0o700)
         result=p.run({'provider':'gmail','action':'status'})
         self.assertTrue(result['connected']);self.assertNotIn('token',json.dumps(result))
+    def test_caldav_status_recognizes_saved_url(self):
+        p.save_config('caldav', {'url':'https://example.test/cal/', 'username':'me', 'password':'secret'})
+        result=p.run({'provider':'caldav','action':'status'})
+        self.assertTrue(result['connected'])
+        self.assertTrue(result['configured'])
     def test_refresh_preserves_rotation_and_secret(self):
         p.save_config('outlook',{'client_id':'test','refresh_token':'old'})
         with patch.object(p,'request',return_value={'access_token':'a','refresh_token':'new','expires_in':3600}) as request:
@@ -60,6 +65,13 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(len(result['days'][0]['events']),2)
         self.assertEqual([e['title'] for e in result['days'][1]['events']],['Late work'])
         self.assertEqual(result['account_email'],'user@example.com')
+    def test_calendar_feed_preserves_google_event_id(self):
+        today=str(dt.datetime.now(dt.timezone.utc).date())
+        event={'id':'stable-id','summary':'Planning','start':{'date':today},
+               'end':{'date':str(dt.datetime.now(dt.timezone.utc).date()+dt.timedelta(days=1))}}
+        with patch.object(p,'access_token',return_value='t'),patch.object(p,'request',
+                side_effect=[{'timeZone':'UTC'},{'items':[event]},{'id':'me'}]):
+            self.assertEqual(p.calendar_feed()['events'][0]['id'],'stable-id')
     def test_calendar_paginates(self):
         with patch.object(p,'access_token',return_value='t'),patch.object(p,'request',side_effect=[{'timeZone':'UTC'},{'items':[],'nextPageToken':'second'},{'items':[]},{'id':'u'}]) as req:
             p.calendar_feed();self.assertIn('pageToken=second',req.call_args_list[2].args[0])

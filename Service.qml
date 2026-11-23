@@ -74,7 +74,7 @@ Item {
     function applyLocalEvents() {
         revision;
         agenda = agenda.filter(e => !e.localId);
-        var rows = workspace.events.filter(e => !e.archived);
+        var rows = Logic.calendarOverlay(workspace.events, googleController.events, calendarSource);
         var days = agendaDays.map(d => Object.assign({}, d, {events: d.events.filter(e => !e.localId)}));
         rows.forEach(function(event) {
             var start = new Date(typeof event.start === "number" ? event.start : Date.parse(event.start));

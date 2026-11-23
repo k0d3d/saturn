@@ -98,11 +98,12 @@ and secret; needs the Calendar events scope for two-way writes), **CalDAV
 Local events can be created with the add row in the Events card; they are stored
 in `~/.local/share/saturn/workspace.json` and synced both ways with the selected
 provider. `saturn calendar list|add|archive|sync|status` exposes the same data
-from the shell. Sync is local-first: the newer `updatedAt` wins, two-sided
-changes keep the local version and are listed under `workspace.sync.conflicts`.
-Archiving a local event removes it from the provider on the next sync; nothing
-is deleted silently. Google Calendar events open in the browser; CalDAV events
-stay in the workspace.
+from the shell. Sync compares each local and remote event against its last
+synced snapshot. Two-sided changes preserve both versions for manual resolution
+and are listed under `workspace.sync.conflicts`; no remote edit is sent for a
+conflicted event. Archiving hides an event locally but does **not** delete it
+from the remote calendar. Remote deletions are not propagated to the workspace.
+Google Calendar events open in the browser; CalDAV events stay in the workspace.
 
 ## Focus and notes
 

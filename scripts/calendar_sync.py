@@ -17,7 +17,6 @@ import initialize  # noqa: E402
 DATA_HOME = Path(os.environ.get('XDG_DATA_HOME') or Path.home() / '.local/share')
 WORKSPACE = DATA_HOME / 'saturn' / 'workspace.json'
 HELPER = ROOT / 'providers.py'
-ACTION_KEYS = {'create', 'update', 'delete'}
 
 
 def emit(value):
@@ -73,13 +72,14 @@ def normalize(provider, feed):
         for event in feed.get('events', []):
             rows.append({'title': event.get('title', ''), 'start': millis(event.get('start_ms', 0)),
                          'end': millis(event.get('end_ms', 0)), 'all_day': bool(event.get('all_day')),
-                         'externalId': str(event.get('start_ms', 0)) + ':' + str(event.get('title', '')),
+                         'externalId': event.get('id', ''),
                          'source': 'google'})
     else:
         for event in feed.get('events', []):
             rows.append({'title': event.get('title', ''), 'start': millis(event.get('start')),
                          'end': millis(event.get('end')), 'all_day': bool(event.get('all_day')),
-                         'externalId': event.get('uid', ''), 'source': 'caldav'})
+                         'externalId': event.get('uid', ''), 'source': 'caldav',
+                         'href': event.get('href'), 'etag': event.get('etag')})
     return rows
 
 
@@ -87,7 +87,8 @@ def remote_payload(event):
     return {'title': event.get('title', ''),
             'start': datetime.fromtimestamp(event['start'] / 1000, tz=timezone.utc).isoformat(),
             'end': datetime.fromtimestamp(event.get('end', event['start']) / 1000, tz=timezone.utc).isoformat(),
-            'externalId': event.get('externalId', '')}
+            'externalId': event.get('externalId', ''),
+            'href': event.get('href'), 'etag': event.get('etag')}
 
 
 def same_event(local, incoming):
@@ -95,10 +96,15 @@ def same_event(local, incoming):
             and local.get('end') == incoming.get('end'))
 
 
-def note_conflict(state, item_id, field):
+def snapshot(event):
+    return {field: event.get(field) for field in ('title', 'start', 'end')}
+
+
+def note_conflict(state, item_id, field, local_value=None, remote_value=None):
     conflicts = state.setdefault('sync', {}).setdefault('conflicts', [])
     conflicts.append({'at': int(time.time() * 1000), 'id': item_id, 'field': field,
-                      'local': 'workspace', 'vault': 'calendar'})
+                      'local': local_value or 'workspace', 'remote': remote_value or 'calendar',
+                      'source': 'calendar'})
     del conflicts[:-200]
 
 
@@ -123,11 +129,11 @@ def main(argv):
     try:
         feed = provider_call(provider, 'sync')
         incoming = normalize(provider, feed)
-        index = {(e.get('source'), e.get('externalId')): e for e in incoming}
         events = state.setdefault('events', [])
         base = sync.setdefault('base', {})
         for row in incoming:
-            key = (row['source'], row['externalId'])
+            if not row['externalId']:
+                continue
             local = next((e for e in events if e.get('source') == row['source']
                           and e.get('externalId') == row['externalId']), None)
             if not local:
@@ -135,38 +141,85 @@ def main(argv):
                          'end': row['end'], 'all_day': row['all_day'], 'source': row['source'],
                          'externalId': row['externalId'], 'archived': False,
                          'createdAt': int(time.time() * 1000), 'updatedAt': int(time.time() * 1000)}
+                if remote_key == 'caldav':
+                    local.update(href=row.get('href'), etag=row.get('etag'))
                 events.insert(0, local)
+                base[local['id']] = snapshot(row)
                 pulled += 1
-            elif not same_event(local, row):
-                previous = base.get(local['id'], 0)
-                if local.get('updatedAt', 0) > previous:
-                    note_conflict(state, local['id'], 'event')
-                else:
-                    local.update({'title': row['title'], 'start': row['start'], 'end': row['end'],
-                                  'all_day': row['all_day'], 'updatedAt': int(time.time() * 1000)})
-                    pulled += 1
-            base[local['id']] = local.get('updatedAt', 0)
+                continue
+            previous = base.get(local['id'])
+            if remote_key == 'caldav':
+                local.update(href=row.get('href'), etag=row.get('etag'))
+            if not isinstance(previous, dict):
+                # Older versions only recorded a timestamp. Establish a baseline
+                # without overwriting either side or making an unverified write.
+                base[local['id']] = snapshot(row)
+                continue
+            current = snapshot(local)
+            incoming_snapshot = snapshot(row)
+            existing_conflict = local.get('syncConflict')
+            if existing_conflict:
+                if (current == existing_conflict.get('local') and
+                        incoming_snapshot == existing_conflict.get('remote')):
+                    continue  # Unchanged since the conflict was recorded.
+                if current != existing_conflict.get('local'):
+                    # The user edited the local copy; that resolves the conflict.
+                    provider_call(provider, 'update', remote_payload(local))
+                    pushed += 1
+                    base[local['id']] = current
+                    local.pop('syncConflict', None)
+                    continue
+                # The remote moved on; record a fresh conflict with its new value.
+                note_conflict(state, local['id'], 'event', current, incoming_snapshot)
+                local['syncConflict'] = {'local': current, 'remote': incoming_snapshot}
+                base[local['id']] = incoming_snapshot
+                continue
+            remote_changed = incoming_snapshot != previous
+            local_changed = current != previous
+            if remote_changed and local_changed:
+                note_conflict(state, local['id'], 'event', current, incoming_snapshot)
+                local['syncConflict'] = {'local': current, 'remote': incoming_snapshot}
+                continue
+            if local.get('archived'):
+                continue
+            if local_changed:
+                provider_call(provider, 'update', remote_payload(local))
+                pushed += 1
+                base[local['id']] = current
+            elif remote_changed:
+                local.update({'title': row['title'], 'start': row['start'], 'end': row['end'],
+                              'all_day': row['all_day'], 'updatedAt': int(time.time() * 1000)})
+                base[local['id']] = incoming_snapshot
+                pulled += 1
+            else:
+                base[local['id']] = incoming_snapshot
+            local.pop('syncConflict', None)
         for event in list(events):
             if event.get('source') not in (remote_key, 'local', None, ''):
                 continue
-            if event.get('archived') and event.get('externalId'):
-                provider_call(provider, 'delete', remote_payload(event))
-                event['externalId'] = None
-                pushed += 1
-            elif not event.get('archived') and not event.get('externalId'):
+            if not event.get('archived') and not event.get('externalId'):
                 result = provider_call(provider, 'create', remote_payload(event))
+                if not result.get('externalId'):
+                    raise RuntimeError('Calendar did not return an event ID; verify the event before retrying.')
                 event['externalId'] = result.get('externalId', '')
                 event['source'] = remote_key
+                if remote_key == 'caldav':
+                    event['href'] = result.get('href')
+                    event['etag'] = result.get('etag')
                 event['updatedAt'] = int(time.time() * 1000)
+                base[event['id']] = snapshot(event)
                 pushed += 1
         sync['lastSync'] = int(time.time() * 1000)
         sync['errors'] = []
         save_state(state)
-    except (RuntimeError, ValueError, subprocess.TimeoutExpired, OSError) as error:
+    except (RuntimeError, ValueError, subprocess.TimeoutExpired, OSError, TypeError) as error:
         errors = sync.setdefault('errors', [])
         errors.append({'at': int(time.time() * 1000), 'error': str(error)[:300]})
         del errors[:-20]
         save_state(state)
+        emit({'ok': False, 'source': source, 'error': str(error)[:300],
+              'pulled': pulled, 'pushed': pushed})
+        return
     emit({'ok': True, 'source': source, 'pulled': pulled, 'pushed': pushed,
           'events': len(state.get('events', [])), 'conflicts': len(state.get('sync', {}).get('conflicts', []))})
 

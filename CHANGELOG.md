@@ -18,6 +18,8 @@
 - Added a human-readable Markdown mirror at `~/Documents/saturn/` with local Git commits, `saturn vault` commands, local-first conflict logging and tombstones.
 - Added two-way calendar sync: Google Calendar write scope, a CalDAV adapter for cPanel endpoints, local events in the workspace, `saturn calendar` commands and local-first conflict handling.
 - Added cPanel IMAP setup guidance and explicit CalDAV connection fields in Connections.
+- Hardened calendar sync: Google events use stable provider IDs; local edits are pushed once via snapshots; two-sided changes keep both versions, record a single conflict and resolve when the user edits locally; failures report `ok: false`.
+- CalDAV now preserves resource URLs and ETags, resolves absolute hrefs only inside the configured HTTPS calendar and honours `TZID` time zones; archived events are no longer deleted from the remote calendar.
 - Updated launcher, icon, app-menu entry, manifest, documentation and website copy for the new name.
 
 ## 0.7.1

@@ -88,7 +88,7 @@ def save_config(provider, config):
         if os.path.exists(temp): os.unlink(temp)
 
 def public_status(config):
-    return {'connected': bool(config.get('refresh_token') or config.get('password')), 'configured': bool(config.get('client_id') or config.get('host')),
+    return {'connected': bool(config.get('refresh_token') or config.get('password')), 'configured': bool(config.get('client_id') or config.get('host') or config.get('url')),
             'webmail_url': config.get('webmail_url',''), 'url': config.get('url',''),
             'calendar_id': config.get('calendar_id', 'primary')}
 
@@ -233,7 +233,7 @@ def calendar_feed():
         if a.tzinfo is None: a=a.replace(tzinfo=zone)
         if b.tzinfo is None: b=b.replace(tzinfo=zone)
         a=a.astimezone(zone); b=b.astimezone(zone)
-        row={'title':clean(event.get('summary') or '(Untitled event)',256),'start_ms':int(a.timestamp()*1000),
+        row={'id':event.get('id',''), 'title':clean(event.get('summary') or '(Untitled event)',256),'start_ms':int(a.timestamp()*1000),
              'end_ms':int(b.timestamp()*1000),'all_day':all_day,'calendar':clean(info.get('summary','Google Calendar'),160),'url':event.get('htmlLink','')}
         events.append(row)
         for day in days:

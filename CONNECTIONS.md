@@ -44,7 +44,11 @@ Connecting verifies login and mailbox access before saving. The app password use
 
 Choose **CalDAV (cPanel)** under Calendar, then **CalDAV (cPanel)** under Account setup. Enter the HTTPS CalDAV endpoint from your cPanel account (often `https://mail.example.com/caldav/`), your calendar username and an app password. The connection is verified before the credentials are saved in `~/.config/saturn/connections/caldav.json` (mode 600). Only HTTPS endpoints are accepted.
 
-Saturn reads the next eight days of events and writes local events back with CalDAV `PUT`/`DELETE` requests. Deleting a vault-style event file or archiving a local event removes it on the next sync. Server responses are size-bounded and titles are rendered as plain text.
+Saturn reads the next eight days of events and writes new or locally edited
+events back with CalDAV `PUT`. Archiving an event only hides it locally; remote
+deletion is intentionally disabled until safe ownership and conflict checks
+are available. Calendar events are not mirrored into the Markdown vault.
+Server responses are size-bounded and titles are rendered as plain text.
 
 Google Calendar two-way writes require reconnecting once after upgrading to 0.8 so the app receives the `calendar.events` scope instead of the older read-only scope.
 

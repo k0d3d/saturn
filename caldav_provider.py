@@ -12,7 +12,9 @@ import urllib.error
 import urllib.parse as url
 import urllib.request
 import uuid
+import xml.etree.ElementTree as ET
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 MAX_BYTES = 4_194_304
 
@@ -39,13 +41,20 @@ def settings(args):
 
 
 def request(config, method, path='', body=None, etag=None):
-    target = config['url'] + path.lstrip('/')
+    base = url.urlparse(config['url'])
+    target = url.urljoin(config['url'], path)
+    parsed = url.urlparse(target)
+    if (parsed.scheme != 'https' or parsed.netloc != base.netloc or
+            not parsed.path.startswith(base.path) or parsed.query or parsed.fragment or
+            parsed.username or parsed.password):
+        raise CaldavError('Event URL is outside the configured calendar.')
     auth = base64.b64encode(f"{config['username']}:{config['password']}".encode()).decode()
     headers = {'Authorization': 'Basic ' + auth, 'User-Agent': 'Saturn/0.8 CalDAV'}
     if body is not None:
         headers['Content-Type'] = 'text/calendar; charset=utf-8'
     if method == 'PROPFIND':
         headers['Depth'] = '1'
+        headers['Content-Type'] = 'application/xml; charset=utf-8'
     if etag:
         headers['If-Match'] = etag
     req = urllib.request.Request(target, data=body.encode() if body is not None else None,
@@ -71,7 +80,7 @@ def check(config):
     return {'ok': True, 'connected': True}
 
 
-def parse_time(value):
+def parse_time(value, timezone=None):
     value = (value or '').strip()
     if not value:
         return None
@@ -85,7 +94,13 @@ def parse_time(value):
         parsed = dt.datetime.fromisoformat(text)
     except ValueError:
         return None
-    return (parsed.replace(tzinfo=dt.timezone.utc) if parsed.tzinfo is None else parsed), False
+    if parsed.tzinfo is None:
+        try:
+            zone = ZoneInfo(timezone) if timezone else dt.timezone.utc
+        except ZoneInfoNotFoundError:
+            return None
+        parsed = parsed.replace(tzinfo=zone)
+    return parsed, False
 
 
 def unfold(text):
@@ -109,7 +124,8 @@ def parse_ics(text):
         elif name == 'UID':
             event['uid'] = value[:200]
         elif name in ('DTSTART', 'DTEND'):
-            parsed = parse_time(value.split(';')[-1] if ';TZID' in key else value)
+            zone = re.search(r'(?:^|;)TZID=([^;:]+)', key, re.I)
+            parsed = parse_time(value, zone.group(1).strip('"') if zone else None)
             if parsed:
                 event[name.lower()] = parsed[0]
                 if name == 'DTSTART':
@@ -128,20 +144,25 @@ def sync(config, days=8):
     )
     if status not in (200, 207):
         raise CaldavError('Could not list calendar events.')
-    hrefs = re.findall(r'<D:href>([^<]+)</D:href>', listing, re.I)
+    try:
+        document = ET.fromstring(listing)
+        resources = [(response.findtext('{DAV:}href'),
+                      response.findtext('.//{DAV:}getetag'))
+                     for response in document.findall('.//{DAV:}response')]
+    except ET.ParseError:
+        raise CaldavError('Invalid calendar listing from the server.') from None
     events = []
     limit = 200
-    for raw_href in hrefs:
+    for raw_href, etag in resources:
         if len(events) >= limit:
             break
+        if not raw_href:
+            continue
         href = url.unquote(raw_href)
         if url.urlparse(href).path.rstrip('/') == url.urlparse(config['url']).path.rstrip('/'):
             continue
-        try:
-            _, text, _ = request(config, 'GET', path=url.urlparse(href).path.lstrip('/'))
-            item = parse_ics(text)
-        except CaldavError:
-            continue
+        _, text, _ = request(config, 'GET', path=href)
+        item = parse_ics(text)
         if not item:
             continue
         start, end = item['dtstart'], item['dtend']
@@ -149,7 +170,8 @@ def sync(config, days=8):
             continue
         if start.date() > dt.datetime.now(dt.timezone.utc).date() + dt.timedelta(days=days):
             continue
-        events.append({'uid': item['uid'], 'title': item.get('title', '(Untitled event)'),
+        events.append({'uid': item['uid'], 'href': href, 'etag': etag,
+                       'title': item.get('title', '(Untitled event)'),
                        'start': start.astimezone(dt.timezone.utc).isoformat(),
                        'end': end.astimezone(dt.timezone.utc).isoformat(),
                        'all_day': bool(item.get('all_day')), 'calendar': 'CalDAV'})
@@ -172,14 +194,18 @@ def to_ics(event):
 
 def write_event(config, event, create=True):
     uid = str(event.get('externalId') or uuid.uuid4().hex)[:200]
-    path = uid + '.ics'
+    path = (uid + '.ics') if create else event.get('href')
+    if not path:
+        raise CaldavError('Calendar event has no resource URL; refresh before editing.')
     if create:
-        status, _, _ = request(config, 'PUT', path=path, body=to_ics(event))
+        status, _, headers = request(config, 'PUT', path=path, body=to_ics(dict(event, externalId=uid)))
     else:
-        status, _, _ = request(config, 'PUT', path=path, body=to_ics(event), etag=event.get('etag'))
+        status, _, headers = request(config, 'PUT', path=path, body=to_ics(event), etag=event.get('etag'))
     if status not in (200, 201, 204):
         raise CaldavError('The calendar rejected the event.')
-    return {'ok': True, 'externalId': uid}
+    return {'ok': True, 'externalId': uid,
+            'href': url.urlparse(url.urljoin(config['url'], path)).path,
+            'etag': headers.get('ETag')}
 
 
 def delete_event(config, event):

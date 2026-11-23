@@ -2,6 +2,13 @@ function dayKey(ms) {
     var d = new Date(ms);
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
+function calendarOverlay(events, feed, source) {
+    var remoteIds = {};
+    (feed || []).forEach(function(event) { if (event.id) remoteIds[event.id] = true; });
+    return (events || []).filter(function(event) {
+        return !event.archived && !(source === "google" && event.source === "google" && remoteIds[event.externalId]);
+    });
+}
 function fresh() {
     return {version: 2, tasks: [], notes: {}, notesV2: [], events: [], activity: {},
             focus: {title: "Open focus", duration: 1500, elapsed: 0, running: false},
