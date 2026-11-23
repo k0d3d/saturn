@@ -24,7 +24,7 @@ PanelWindow {
     Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
 
     anchors.top: true
-    margins.top: Style.bar.sizeHorizontal + 10
+    margins.top: Commons.Style.bar.sizeHorizontal + 10
     implicitWidth: Math.min(800, screen.width - 40)
     implicitHeight: 300
     exclusionMode: ExclusionMode.Ignore
