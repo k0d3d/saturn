@@ -9,7 +9,8 @@ Item {
     property bool connected: false
     readonly property bool authenticated: connected
     readonly property bool installed: true
-    readonly property bool busy: worker.running
+    readonly property bool busy: worker.running || inFlight
+    property bool inFlight: false
     readonly property bool changing: busy && operation === "seen"
     property var notifications: []
     property var undoStack: []
@@ -36,6 +37,7 @@ Item {
     function send(args) {
         if (busy) return false;
         operation = args.action; payload = Object.assign({provider: provider}, args); received = false;
+        inFlight = true;
         lastError = ""; actionError = ""; worker.stdinEnabled = true; worker.running = true; return true;
     }
     function connectAccount(client, secret, calendar) {
@@ -48,7 +50,7 @@ Item {
     function connectCaldav(endpoint, username, password) {
         return send({action:"connect",url:endpoint,username:username,password:password});
     }
-    function cancelLogin() { if (busy && operation === "connect") { worker.running = false; authUrl = ""; userCode = ""; } }
+    function cancelLogin() { if (busy && operation === "connect") { worker.running = false; inFlight = false; authUrl = ""; userCode = ""; } }
     function disconnectAccount() { send({action:"disconnect"}); }
     function refresh() { if (active && connected && !busy) send({action:"sync"}); }
     function refreshIfStale() { if (Date.now() - lastUpdated > 60000) refresh(); }
@@ -100,6 +102,7 @@ Item {
             }
         }
         onExited: function(code) {
+            root.inFlight = false;
             if (!root.received && !root.lastError) root.lastError=code === 124 ? "The request timed out. Try again." : "Request cancelled or provider unavailable.";
             root.payload=({}); root.pendingMessage=null; root.authUrl=""; root.userCode="";
             if (root.syncAfter) { root.syncAfter=false; later.restart(); }
