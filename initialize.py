@@ -24,6 +24,7 @@ def fresh():
         'tasks': [],
         'notes': {},
         'notesV2': [],
+        'events': [],
         'activity': {},
         'focus': {'title': 'Open focus', 'duration': 1500, 'elapsed': 0, 'running': False},
         'sync': {'providers': {}, 'conflicts': [], 'tombstones': []},
@@ -103,6 +104,21 @@ def migrate(state):
             raise ValueError('Unrecognized note metadata')
         library.append(note)
     result['notesV2'] = library
+
+    events = state.get('events', [])
+    if not isinstance(events, list):
+        raise ValueError('Unrecognized events')
+    result['events'] = []
+    for raw in events:
+        if not isinstance(raw, dict) or not isinstance(raw.get('id'), str) or not isinstance(raw.get('title'), str):
+            raise ValueError('Unrecognized event')
+        event = dict(raw)
+        event.setdefault('createdAt', 0)
+        event.setdefault('updatedAt', 0)
+        event.setdefault('archived', False)
+        if not _finite(event['createdAt']) or not _finite(event['updatedAt']) or not isinstance(event['archived'], bool):
+            raise ValueError('Unrecognized event metadata')
+        result['events'].append(event)
 
     activity = state.get('activity', {})
     if not isinstance(activity, dict) or any(not _finite(value) for value in activity.values()):

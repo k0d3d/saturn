@@ -45,6 +45,9 @@ Item {
     function connectImap(host,port,username,password,folder,webmail) {
         return send({action:"connect",host:host,port:port,username:username,password:password,folder:folder,webmail_url:webmail});
     }
+    function connectCaldav(endpoint, username, password) {
+        return send({action:"connect",url:endpoint,username:username,password:password});
+    }
     function cancelLogin() { if (busy && operation === "connect") { worker.running = false; authUrl = ""; userCode = ""; } }
     function disconnectAccount() { send({action:"disconnect"}); }
     function refresh() { if (active && connected && !busy) send({action:"sync"}); }

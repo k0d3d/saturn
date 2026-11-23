@@ -18,7 +18,7 @@ PanelWindow {
     property bool pinned: false
     property bool awaitingEntry: false
     readonly property bool hovered: workspaceHover.hovered
-    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || connectionsOpen || notesOpen
+    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || eventTitle.activeFocus || eventStart.activeFocus || connectionsOpen || notesOpen
     readonly property real uiScale: compact ? 0.82 : 1
     property string taskView: "Today"
     property bool insights: false
@@ -32,6 +32,14 @@ PanelWindow {
     readonly property var calendarDay: store.agendaDays[Math.max(0, calendarIndex)] || null
     readonly property var taskRows: Logic.tasksInView(dash.store.tasks, dash.taskView, dash.store.today)
     function taskCount(view) { return Logic.tasksInView(dash.store.tasks, view, dash.store.today).length }
+    function submitEvent() {
+        var title = eventTitle.text.trim();
+        if (!title) return;
+        var start = eventStart.text.trim() || (dash.calendarDate + "T09:00");
+        dash.store.addEvent(title, start, "");
+        eventTitle.text = ""; eventStart.text = "";
+        page.forceActiveFocus();
+    }
     function submitTask() {
         var text = taskInput.text.trim();
         if (!text) return;
@@ -285,6 +293,11 @@ PanelWindow {
                             Action { objectName: "dashboard-next"; text: "›"; enabled: dash.calendarIndex < dash.store.agendaDays.length - 1; onClicked: dash.moveDay(1) }
                         }
                         Action { text: "Back to today"; visible: dash.calendarDate !== dash.store.calendarToday; onClicked: dash.calendarDate = dash.store.calendarToday }
+                        RowLayout {
+                            Entry { id: eventTitle; Layout.fillWidth: true; maximumLength: 256; placeholderText: "+  Add an event"; onAccepted: dash.submitEvent() }
+                            Action { text: "+"; onClicked: dash.submitEvent(); Accessible.name: "Add event" }
+                        }
+                        Entry { id: eventStart; Layout.fillWidth: true; maximumLength: 32; placeholderText: "Starts (YYYY-MM-DDTHH:mm, optional)"; onAccepted: dash.submitEvent() }
                         ListView {
                             Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 14
                             model: dash.calendarDay ? dash.calendarDay.events : []
@@ -306,11 +319,18 @@ PanelWindow {
                                     Label { Layout.fillWidth: true; text: eventLink.modelData.all_day ? "All day" : dash.eventClock(eventLink.modelData.start_ms) + " – " + dash.eventClock(eventLink.modelData.end_ms); font.pixelSize: 12; opacity: 0.7 }
                                     Label { Layout.fillWidth: true; text: eventLink.modelData.calendar || ""; font.pixelSize: 11; opacity: 0.55 }
                                 }
+                                Action {
+                                    anchors.right: parent.right; anchors.top: parent.top; z: 2
+                                    text: "⊟"; visible: !!eventLink.modelData.localId
+                                    onClicked: dash.store.archiveEvent(eventLink.modelData.localId)
+                                    Accessible.name: "Archive event"
+                                    ToolTip.visible: hovered; ToolTip.text: "Archive event"
+                                }
                             }
                             Column {
                                 anchors.centerIn: parent; width: parent.width; spacing: 12; visible: parent.count === 0
                                 Label { width: parent.width; text: "Nothing scheduled"; font.pixelSize: 21; font.weight: Font.DemiBold; horizontalAlignment: Text.AlignHCenter }
-                                Label { width: parent.width; text: dash.store.agendaDays.length ? "Pick another day with the arrows above." : dash.store.calendarSource === "off" ? "Calendar is off. Choose a source in Connections." : dash.store.calendarSource === "google" ? "Connect Google Calendar in Connections to see events here." : "Connect your calendars in OmaCal to see events here."; font.pixelSize: 14; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter; opacity: 0.65 }
+                                Label { width: parent.width; text: dash.store.agendaDays.length ? "Pick another day with the arrows above." : dash.store.calendarSource === "off" ? "Calendar is off. Choose a source in Connections." : dash.store.calendarSource === "google" ? "Connect Google Calendar in Connections to see events here." : dash.store.calendarSource === "caldav" ? "Connect your CalDAV calendar in Connections, or add an event above." : "Connect your calendars in OmaCal to see events here."; font.pixelSize: 14; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter; opacity: 0.65 }
                             }
                         }
                         Label { visible: dash.store.calendarSource === "google" && !!dash.store.googleCalendar.lastError; text: dash.store.googleCalendar.lastError; Layout.fillWidth: true; wrapMode: Text.Wrap; color: theme.urgent; font.pixelSize: 12 }

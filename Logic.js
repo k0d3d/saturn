@@ -3,7 +3,7 @@ function dayKey(ms) {
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 function fresh() {
-    return {version: 2, tasks: [], notes: {}, notesV2: [], activity: {},
+    return {version: 2, tasks: [], notes: {}, notesV2: [], events: [], activity: {},
             focus: {title: "Open focus", duration: 1500, elapsed: 0, running: false},
             sync: {providers: {}, conflicts: [], tombstones: []}, insights: {}};
 }
@@ -61,6 +61,18 @@ function migrate(s) {
         stringList(note.tags, "note tags");
         if (!finite(note.createdAt) || !finite(note.updatedAt) || typeof note.archived !== "boolean" || typeof note.pinned !== "boolean") throw new Error("Unrecognized note metadata");
         return note;
+    });
+
+    var events = s.events === undefined ? [] : s.events;
+    if (!Array.isArray(events)) throw new Error("Unrecognized events");
+    out.events = events.map(function(raw) {
+        if (!raw || typeof raw !== "object" || typeof raw.id !== "string" || typeof raw.title !== "string") throw new Error("Unrecognized event");
+        var event = Object.assign({}, raw);
+        if (event.createdAt === undefined) event.createdAt = 0;
+        if (event.updatedAt === undefined) event.updatedAt = 0;
+        if (event.archived === undefined) event.archived = false;
+        if (!finite(event.createdAt) || !finite(event.updatedAt) || typeof event.archived !== "boolean") throw new Error("Unrecognized event metadata");
+        return event;
     });
 
     var activity = s.activity === undefined ? {} : s.activity;

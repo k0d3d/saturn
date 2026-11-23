@@ -6,7 +6,7 @@ ScrollView {
     id: pane; objectName: "connections-pane"
     required property var store
     property string setupProvider: "gmail"
-    readonly property var controller: setupProvider === "gmail" ? store.gmail : setupProvider === "outlook" ? store.outlook : setupProvider === "imap" ? store.imap : store.googleCalendar
+    readonly property var controller: setupProvider === "gmail" ? store.gmail : setupProvider === "outlook" ? store.outlook : setupProvider === "imap" ? store.imap : setupProvider === "caldav" ? store.caldavCalendar : store.googleCalendar
     Theme { id: theme }
     clip: true
     contentWidth: availableWidth
@@ -50,9 +50,12 @@ ScrollView {
             Layout.fillWidth: true; spacing: 8
             Action { text: "OmaCal"; selected: pane.store.calendarSource === "omacal"; onClicked: pane.store.setCalendarSource("omacal") }
             Action { text: "Google Calendar"; selected: pane.store.calendarSource === "google"; onClicked: { pane.store.setCalendarSource("google"); pane.setupProvider="google-calendar"; } }
+            Action { text: "CalDAV (cPanel)"; selected: pane.store.calendarSource === "caldav"; onClicked: { pane.store.setCalendarSource("caldav"); pane.setupProvider="caldav"; } }
             Action { text: "Off"; selected: pane.store.calendarSource === "off"; onClicked: pane.store.setCalendarSource("off") }
         }
         Copy { visible: pane.store.calendarSource === "omacal"; text: "OmaCal supplies the calendars you connect there. Google Calendar can also connect directly below."; color: theme.muted }
+        Copy { visible: pane.store.calendarSource === "google"; text: "Two-way events require the Calendar events scope. If you connected before 0.8, use Reconnect in browser once to grant it."; color: theme.muted }
+        Copy { visible: pane.store.calendarSource === "caldav"; text: "Enter the CalDAV URL from your cPanel account (for example https://mail.example.com/caldav/), your username and an app password. Events sync both ways with the local calendar."; color: theme.muted }
         Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.border }
         Copy { text: "Account setup"; font.pixelSize: 21; font.bold: true }
         Flow {
@@ -61,18 +64,21 @@ ScrollView {
             Action { text: "Outlook"; selected: pane.setupProvider === "outlook"; onClicked: pane.setupProvider="outlook" }
             Action { text: "IMAP"; selected: pane.setupProvider === "imap"; onClicked: pane.setupProvider="imap" }
             Action { text: "Google Calendar"; selected: pane.setupProvider === "google-calendar"; onClicked: pane.setupProvider="google-calendar" }
+            Action { text: "CalDAV (cPanel)"; selected: pane.setupProvider === "caldav"; onClicked: pane.setupProvider="caldav" }
         }
         Copy { text: pane.controller.connected ? "Account connected" : "Account not connected"; color: pane.controller.connected ? theme.accent : theme.muted }
         Copy {
-            text: pane.setupProvider === "imap" ? "Connect an IMAP account using your provider’s TLS server and app password. Usually port 993. This reads sender/subject headers without marking messages read. OAuth-only accounts should use Gmail or Outlook above."
+            text: pane.setupProvider === "imap" ? "For cPanel mail, use mail.yourdomain.com, port 993, SSL, your full email address and an app password. This reads headers without marking messages read until you choose Mark read."
+                : pane.setupProvider === "caldav"
+                ? "Use the HTTPS CalDAV endpoint from cPanel, your calendar username and an app password. Events created in Saturn are written back to this calendar."
                 : pane.setupProvider === "outlook"
                 ? "Use your Microsoft app registration’s client ID with public client flows enabled. Sign in with the device code shown here. Work accounts may need administrator consent."
                 : "Use your Google OAuth Desktop app client ID and client secret. Enable the Gmail API or Calendar API for this connection and add yourself as a test user if needed. Sign-in opens in your browser."
             color: theme.muted
         }
         Action { text: "Open setup guide"; onClicked: Qt.openUrlExternally("https://github.com/k0d3d/saturn/blob/main/CONNECTIONS.md") }
-        Entry { id: client; visible: pane.setupProvider !== "imap"; placeholderText: "OAuth client ID"; enabled: !pane.controller.busy; Accessible.name: "OAuth client ID" }
-        Entry { id: secret; visible: pane.setupProvider !== "outlook" && pane.setupProvider !== "imap"; placeholderText: "Google client secret"; echoMode: TextInput.Password; enabled: !pane.controller.busy; Accessible.name: "Google client secret" }
+        Entry { id: client; visible: pane.setupProvider !== "imap" && pane.setupProvider !== "caldav"; placeholderText: "OAuth client ID"; enabled: !pane.controller.busy; Accessible.name: "OAuth client ID" }
+        Entry { id: secret; visible: pane.setupProvider !== "outlook" && pane.setupProvider !== "imap" && pane.setupProvider !== "caldav"; placeholderText: "Google client secret"; echoMode: TextInput.Password; enabled: !pane.controller.busy; Accessible.name: "Google client secret" }
         Entry { id: calendar; visible: pane.setupProvider === "google-calendar"; placeholderText: "Calendar ID (leave blank for primary)"; enabled: !pane.controller.busy; Accessible.name: "Google Calendar ID" }
         ColumnLayout {
             visible: pane.setupProvider === "imap"; Layout.fillWidth: true; spacing: 8
@@ -84,9 +90,16 @@ ScrollView {
             Entry { id: imapWebmail; placeholderText: "Webmail URL (optional, https://…)"; enabled: !pane.controller.busy }
             Action { text: "Connect IMAP"; enabled: !pane.controller.busy && !!imapHost.text.trim() && !!imapUser.text.trim() && !!imapPassword.text && imapPort.acceptableInput; onClicked: { pane.controller.connectImap(imapHost.text.trim(),Number(imapPort.text),imapUser.text.trim(),imapPassword.text,imapFolder.text.trim(),imapWebmail.text.trim()); imapPassword.clear(); } }
         }
+        ColumnLayout {
+            visible: pane.setupProvider === "caldav"; Layout.fillWidth: true; spacing: 8
+            Entry { id: caldavUrl; placeholderText: "https://mail.example.com/caldav/"; enabled: !pane.controller.busy }
+            Entry { id: caldavUser; placeholderText: "Calendar username"; enabled: !pane.controller.busy }
+            Entry { id: caldavPassword; placeholderText: "App password"; echoMode: TextInput.Password; enabled: !pane.controller.busy }
+            Action { text: "Connect CalDAV"; enabled: !pane.controller.busy && !!caldavUrl.text.trim() && !!caldavUser.text.trim() && !!caldavPassword.text; onClicked: { pane.controller.connectCaldav(caldavUrl.text.trim(),caldavUser.text.trim(),caldavPassword.text); caldavPassword.clear(); } }
+        }
         Flow {
             Layout.fillWidth: true; spacing: 8
-            Action { visible: pane.setupProvider !== "imap"; text: pane.controller.connected ? "Reconnect in browser" : "Connect in browser"; enabled: !pane.controller.busy && !!client.text.trim(); onClicked: { pane.controller.connectAccount(client.text.trim(),secret.text.trim(),calendar.text.trim()); secret.clear(); } }
+            Action { visible: pane.setupProvider !== "imap" && pane.setupProvider !== "caldav"; text: pane.controller.connected ? "Reconnect in browser" : "Connect in browser"; enabled: !pane.controller.busy && !!client.text.trim(); onClicked: { pane.controller.connectAccount(client.text.trim(),secret.text.trim(),calendar.text.trim()); secret.clear(); } }
             Action { text: "Cancel sign-in"; visible: pane.controller.busy && pane.controller.operation === "connect"; onClicked: pane.controller.cancelLogin() }
             Action { text: "Disconnect"; enabled: pane.controller.connected && !pane.controller.busy; onClicked: pane.controller.disconnectAccount() }
         }

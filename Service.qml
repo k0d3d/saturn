@@ -39,35 +39,83 @@ Item {
     readonly property string mailSource: workspace.mailSource || "hey"
     readonly property string calendarSource: workspace.calendarSource || "omacal"
     readonly property string mailName: ({hey:"HEY",gmail:"Gmail",outlook:"Outlook",imap:"IMAP",off:"Mail"})[mailSource]
-    readonly property string calendarName: calendarSource === "google" ? "Google Calendar" : calendarSource === "off" ? "Calendar off" : "OmaCal"
+    readonly property string calendarName: calendarSource === "google" ? "Google Calendar" : calendarSource === "caldav" ? "CalDAV" : calendarSource === "off" ? "Calendar off" : "OmaCal"
     readonly property var mail: mailSource === "gmail" ? gmailController : mailSource === "outlook" ? outlookController : mailSource === "imap" ? imapController : mailController
     readonly property var newMail: mailSource !== "off" && mail ? mail.notifications.filter(m => m.unread) : []
     readonly property alias imap: imapController
     readonly property alias gmail: gmailController
     readonly property alias outlook: outlookController
     readonly property alias googleCalendar: googleController
+    readonly property alias caldavCalendar: caldavController
+    ProviderStore { id: caldavController; provider: "caldav"; active: root.ready && root.calendarSource === "caldav" }
     HeyStore { id: mailController; active: root.mailEnabled && root.mailSource === "hey" }
     ProviderStore { id: gmailController; provider: "gmail"; active: root.ready && root.mailEnabled && root.mailSource === "gmail" }
     ProviderStore { id: outlookController; provider: "outlook"; active: root.ready && root.mailEnabled && root.mailSource === "outlook" }
     ProviderStore { id: imapController; provider: "imap"; active: root.ready && root.mailEnabled && root.mailSource === "imap" }
-    ProviderStore { id: googleController; provider: "google-calendar"; active: root.ready && root.calendarSource === "google"; onFeedChanged: if(root.calendarSource === "google") root.applyGoogleCalendar() }
+    ProviderStore { id: googleController; provider: "google-calendar"; active: root.ready && root.calendarSource === "google"; onFeedChanged: if(root.calendarSource === "google") { root.applyGoogleCalendar(); root.applyLocalEvents(); } }
     function setMailSource(source) {
         if (!ready || ["hey","gmail","outlook","imap","off"].indexOf(source)<0) return;
         workspace=Object.assign({},workspace,{mailSource:source}); changed();
     }
     function setCalendarSource(source) {
-        if (!ready || ["omacal","google","off"].indexOf(source)<0) return;
+        if (!ready || ["omacal","google","caldav","off"].indexOf(source)<0) return;
         workspace=Object.assign({},workspace,{calendarSource:source}); changed();
     }
     onCalendarSourceChanged: {
         agenda=[]; agendaDays=[]; calendarClocks=({}); calendarTimezone=""; calendarToday=today;
         if(calendarSource === "omacal") feed.reload();
         else if(calendarSource === "google") { applyGoogleCalendar(); googleController.refreshIfStale(); }
+        else if(calendarSource === "caldav") { agenda=[]; agendaDays=[]; root.calendarSync("sync"); }
     }
     function applyGoogleCalendar() {
         agenda=googleController.events; agendaDays=googleController.days; calendarClocks=googleController.clocks;
         calendarTimezone=googleController.timezone; calendarToday=googleController.today || today; agendaUpdated=Date.now();
     }
+    function applyLocalEvents() {
+        revision;
+        agenda = agenda.filter(e => !e.localId);
+        var rows = workspace.events.filter(e => !e.archived);
+        var days = agendaDays.map(d => Object.assign({}, d, {events: d.events.filter(e => !e.localId)}));
+        rows.forEach(function(event) {
+            var start = new Date(typeof event.start === "number" ? event.start : Date.parse(event.start));
+            var end = new Date(typeof event.end === "number" ? event.end : (start.getTime() + 3600000));
+            if (isNaN(start.getTime())) return;
+            var key = Logic.dayKey(start.getTime());
+            var row = {title: event.title, start_ms: start.getTime(), end_ms: end.getTime(),
+                       all_day: !!event.all_day, calendar: event.source || "Local",
+                       localId: event.id, url: ""};
+            agenda.push(row);
+            var day = days.find(d => d.date === key);
+            if (!day) { day = {date: key, label: Qt.formatDate(start, "ddd d MMM"), events: []}; days.push(day); }
+            day.events.push(row);
+        });
+        days.sort((a,b) => a.date.localeCompare(b.date));
+        days.forEach(d => d.events.sort((a,b) => a.start_ms - b.start_ms));
+        agendaDays = days;
+        agendaUpdated = Date.now();
+    }
+    function addEvent(title, start, end) {
+        if (!ready || error || !String(title || "").trim()) return "";
+        var stamp = Date.now();
+        var id = stamp.toString(36) + Math.random().toString(36).slice(2, 8);
+        var when = Date.parse(start);
+        if (isNaN(when)) when = stamp;
+        workspace.events.unshift({id: id, title: String(title).trim().slice(0, 256),
+            start: when, end: isNaN(Date.parse(end)) ? when + 3600000 : Date.parse(end),
+            all_day: false, calendar: "Local", source: "local", externalId: null,
+            archived: false, createdAt: stamp, updatedAt: stamp});
+        changed(); applyLocalEvents();
+        if (calendarSource === "google" || calendarSource === "caldav") calendarSync("sync");
+        return id;
+    }
+    function archiveEvent(id) {
+        var event = workspace.events.find(e => e.id === id);
+        if (!event || !ready || error) return;
+        event.archived = true; event.updatedAt = Date.now();
+        changed(); applyLocalEvents();
+        if (calendarSource === "google" || calendarSource === "caldav") calendarSync("sync");
+    }
+    function applyCalendarFeed() { applyLocalEvents(); }
     function openMail(target) {
         if (mailSource === "imap") {
             if (/^https:\/\/[^\s/]+(?:[/?#]|$)/i.test(imapController.webmailUrl)) Quickshell.execDetached(["xdg-open",imapController.webmailUrl]);
@@ -171,7 +219,7 @@ Item {
         eachWindow(w => { w.commandOpen = false; w.dashboardOpen = false; w.close(); });
     }
     function openCalendar(date) {
-        if (calendarSource === "off") return;
+        if (calendarSource === "off" || calendarSource === "caldav") return;
         var day = /^\d{4}-\d{2}-\d{2}$/.test(date || "") ? date : calendarToday;
         if (calendarSource === "google") {
             Quickshell.execDetached(["xdg-open","https://calendar.google.com/calendar/u/0/r/day/" + day.replace(/-/g,"/") + "?authuser=" + encodeURIComponent(googleController.accountEmail)]);
@@ -312,6 +360,7 @@ Item {
                 root.error = "";
                 root.ready = true;
                 root.changed(false, true);
+                root.applyLocalEvents();
             } catch (e) {
                 root.error = "Could not read saved workspace. Original file preserved.";
                 console.warn("Saturn:", e);
@@ -342,6 +391,7 @@ Item {
                     seen[key] = true; return true;
                 });
                 root.agendaUpdated = Date.now();
+                root.applyLocalEvents();
             } catch (e) { root.agenda = []; root.agendaDays = []; }
         }
         onLoadFailed: { if(root.calendarSource === "omacal") { root.agenda = []; root.agendaDays = []; } }
@@ -379,6 +429,30 @@ Item {
         }
     }
     Timer { interval: 60000; repeat: true; running: root.ready; onTriggered: root.vaultSync("sync") }
+    property string calendarMode: "sync"
+    function calendarSync(mode) {
+        if (!ready || error || calendarProcess.running) return;
+        root.flush();
+        calendarMode = (mode === "sync" || mode === "status") ? mode : "sync";
+        calendarProcess.running = true;
+    }
+    Process {
+        id: calendarProcess
+        command: ["python3", Qt.resolvedUrl("scripts/calendar_sync.py").toString().replace("file://", ""), root.calendarMode]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var result = JSON.parse(text);
+                    if (!result.ok) root.notice = "Calendar sync: " + (result.error || "failed");
+                } catch (e) {}
+            }
+        }
+        onExited: function(code) { if (code === 0) storage.reload(); }
+    }
+    Timer {
+        interval: 60000; repeat: true; running: root.ready && (root.calendarSource === "google" || root.calendarSource === "caldav")
+        onTriggered: root.calendarSync("sync")
+    }
     Timer {
         interval: 1000; repeat: true; running: root.ready
         onTriggered: {
@@ -438,6 +512,18 @@ Item {
         function tasks(command: string, first: string, second: string): string { return root.tasksCommand(command, first, second); }
         function notes(command: string, a: string, b: string, c: string, d: string): string { return root.notesCommand(command, a, b, c, d); }
         function vaultSync(mode: string): void { root.vaultSync(mode || "sync"); }
+        function calendarSync(mode: string): void { root.calendarSync(mode || "sync"); }
+        function calendar(command: string, a: string, b: string): string {
+            var cmd = command || "list";
+            if (cmd === "list") return JSON.stringify(root.workspace.events);
+            if (cmd === "add") return JSON.stringify({ok: !!a, id: a ? root.addEvent(a, b, "") : ""});
+            if (cmd === "archive") {
+                var event = root.workspace.events.find(e => e.id === a);
+                if (!event) return JSON.stringify({ok: false, error: "No such event"});
+                root.archiveEvent(a); return JSON.stringify({ok: true, id: a});
+            }
+            return JSON.stringify({ok: false, error: "Unknown calendar command"});
+        }
         function notesOpen(): void { root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
         function notesSearch(query: string): void { root.notesQuery = query || ""; root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
         function data(command: string, a: string, b: string, c: string, d: string): string {

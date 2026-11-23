@@ -1,5 +1,6 @@
 """User-owned OAuth connections. JSON lines in/out; credentials never leave this helper."""
 import imap_provider
+import caldav_provider
 import base64
 import datetime as dt
 import email.utils
@@ -21,8 +22,9 @@ from zoneinfo import ZoneInfo
 
 PROVIDERS = {
     'imap': (None, None),
+    'caldav': (None, None),
     'gmail': ('https://oauth2.googleapis.com/token', 'https://www.googleapis.com/auth/gmail.modify'),
-    'google-calendar': ('https://oauth2.googleapis.com/token', 'https://www.googleapis.com/auth/calendar.readonly'),
+    'google-calendar': ('https://oauth2.googleapis.com/token', 'https://www.googleapis.com/auth/calendar.events'),
     'outlook': ('https://login.microsoftonline.com/common/oauth2/v2.0/token', 'offline_access https://graph.microsoft.com/Mail.ReadWrite'),
 }
 
@@ -87,7 +89,7 @@ def save_config(provider, config):
 
 def public_status(config):
     return {'connected': bool(config.get('refresh_token') or config.get('password')), 'configured': bool(config.get('client_id') or config.get('host')),
-            'webmail_url': config.get('webmail_url',''),
+            'webmail_url': config.get('webmail_url',''), 'url': config.get('url',''),
             'calendar_id': config.get('calendar_id', 'primary')}
 
 def save_tokens(provider, config, result):
@@ -240,6 +242,25 @@ def calendar_feed():
         clocks[str(row['start_ms'])]=a.strftime('%-I:%M %p');clocks[str(row['end_ms'])]=b.strftime('%-I:%M %p')
     return {'days':days,'events':events,'clocks':clocks,'today':start.date().isoformat(),'timezone':str(zone),'connected':True,'account_email':request('https://www.googleapis.com/calendar/v3/calendars/primary',token=token).get('id','')}
 
+def calendar_write(action, args):
+    token=access_token('google-calendar'); config=read_config('google-calendar')
+    calendar=url.quote(str(config.get('calendar_id','primary')),safe='')
+    base='https://www.googleapis.com/calendar/v3/calendars/'+calendar+'/events'
+    if action=='delete':
+        request(base+'/'+url.quote(str(args.get('externalId','')),safe=''),token=token,method='DELETE')
+        return {'ok':True,'externalId':args.get('externalId','')}
+    def moment(value):
+        parsed=dt.datetime.fromisoformat(str(value).replace('Z','+00:00'))
+        return parsed.astimezone(dt.timezone.utc).isoformat()
+    payload={'summary':clean(args.get('title','Untitled event'),256),
+             'start':{'dateTime':moment(args.get('start'))},
+             'end':{'dateTime':moment(args.get('end') or args.get('start'))}}
+    if action=='create':
+        result=request(base,token=token,data=payload,method='POST')
+    else:
+        result=request(base+'/'+url.quote(str(args.get('externalId','')),safe=''),token=token,data=payload,method='PUT')
+    return {'ok':True,'externalId':result.get('id',''),'url':result.get('htmlLink','')}
+
 def run(args):
     provider=args.get('provider')
     config_path(provider)
@@ -254,11 +275,19 @@ def run(args):
             if not config.get('password'):raise ProviderError('Connect IMAP in Connections first.')
             return imap_provider.list_mail(config) if action=='sync' else imap_provider.mark_seen(config,args)
         except imap_provider.ImapError as e:raise ProviderError(str(e)) from None
+    if provider=='caldav' and action in ['connect','sync','create','update','delete']:
+        try:
+            if action=='connect':
+                config=caldav_provider.settings(args); caldav_provider.check(config); save_config(provider,config)
+                return public_status(config)
+            return caldav_provider.run(dict(args, action=action))
+        except caldav_provider.CaldavError as e: raise ProviderError(str(e)) from None
     if action=='connect': return connect(provider,args)
     if action=='disconnect':
         config_path(provider).unlink(missing_ok=True)
         return {'connected':False,'configured':False}
     if action=='sync': return calendar_feed() if provider=='google-calendar' else list_mail(provider)
+    if provider=='google-calendar' and action in ['create','update','delete']: return calendar_write(action,args)
     if action=='seen' and provider!='google-calendar': return mark_seen(provider,args)
     raise ProviderError('Unsupported action.')
 

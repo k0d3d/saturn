@@ -90,10 +90,19 @@ From the shell: `saturn notes list`, `saturn notes search "voice"`, `saturn note
 ## Calendar
 
 Use ‹ / › in the Events card to switch days, and **Back to today** to reset.
-The date and full day's events change together. Arrows stop at the limits of
-OmaCal's feed, currently today plus seven days. Event times use OmaCal's published
-clock labels where available. Calendar access is read only; synchronization is
-managed by OmaCal. No extra calendar account connection is needed for the OmaCal source. Alternatively, select Google Calendar in Connections and sign in directly; the default is your primary calendar. Clicking an event opens the selected full calendar on that day and closes Saturn. Weekday names appear above dates.
+Choose the source in Connections: **Google Calendar** (your own OAuth client ID
+and secret; needs the Calendar events scope for two-way writes), **CalDAV
+(cPanel)** (HTTPS URL, username and app password entered manually), **OmaCal**
+(read-only local feed) or **Off**.
+
+Local events can be created with the add row in the Events card; they are stored
+in `~/.local/share/saturn/workspace.json` and synced both ways with the selected
+provider. `saturn calendar list|add|archive|sync|status` exposes the same data
+from the shell. Sync is local-first: the newer `updatedAt` wins, two-sided
+changes keep the local version and are listed under `workspace.sync.conflicts`.
+Archiving a local event removes it from the provider on the next sync; nothing
+is deleted silently. Google Calendar events open in the browser; CalDAV events
+stay in the workspace.
 
 ## Focus and notes
 

@@ -40,11 +40,20 @@ The optional HTTPS webmail URL enables **Open webmail** and message clicks to op
 
 Connecting verifies login and mailbox access before saving. The app password uses the same private local storage as OAuth tokens. Listing uses `BODY.PEEK` for sender/subject/date headers and does not mark messages read or download message bodies. Read/Undo uses UIDs and verifies UIDVALIDITY to prevent changes to the wrong message if a mailbox is recreated. IMAP is also beta until verified against your provider.
 
+## CalDAV: cPanel calendars
+
+Choose **CalDAV (cPanel)** under Calendar, then **CalDAV (cPanel)** under Account setup. Enter the HTTPS CalDAV endpoint from your cPanel account (often `https://mail.example.com/caldav/`), your calendar username and an app password. The connection is verified before the credentials are saved in `~/.config/saturn/connections/caldav.json` (mode 600). Only HTTPS endpoints are accepted.
+
+Saturn reads the next eight days of events and writes local events back with CalDAV `PUT`/`DELETE` requests. Deleting a vault-style event file or archiving a local event removes it on the next sync. Server responses are size-bounded and titles are rendered as plain text.
+
+Google Calendar two-way writes require reconnecting once after upgrading to 0.8 so the app receives the `calendar.events` scope instead of the older read-only scope.
+
 ## What syncs
 
 - **IMAP:** up to 20 unread message headers, refreshed every two minutes, with verified read/undo changes.
 - **Gmail / Outlook:** up to 20 unread inbox messages; refresh every two minutes and on reopening when stale. Click a message to open it in the provider. Mark read and Undo are verified with the remote service before the list changes. This is an inbox preview, not a full email client.
-- **Google Calendar:** one selected calendar, today plus seven days, with recurring occurrences and all-day/multi-day events. Dates and clock labels use that calendar’s timezone. Clicking an event opens the full Google Calendar day. No OmaCal install is required for this source.
+- **Google Calendar:** one selected calendar, today plus seven days, with recurring occurrences and all-day/multi-day events. Reconnect once to grant write access; local events are pushed back. Clicking an event opens the full Google Calendar day.
+- **CalDAV:** the next eight days from your cPanel calendar, with local events written back. Conflicts stay local and are listed in the workspace.
 - **HEY / OmaCal:** existing behavior is preserved. HEY uses its CLI and live watch; OmaCal supplies its own published calendar feed.
 - **Local tasks:** stay on your machine. Due dates, completion and archiving are stored in the local workspace.
 

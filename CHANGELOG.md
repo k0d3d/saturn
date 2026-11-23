@@ -16,6 +16,8 @@
 - Added `saturn data` for live agent reads/writes and an offline, locked `workspace_api.py` fallback.
 - Added an installable OpenCode skill (`skills/saturn/SKILL.md`) with the data schema, command reference and safety rules.
 - Added a human-readable Markdown mirror at `~/Documents/saturn/` with local Git commits, `saturn vault` commands, local-first conflict logging and tombstones.
+- Added two-way calendar sync: Google Calendar write scope, a CalDAV adapter for cPanel endpoints, local events in the workspace, `saturn calendar` commands and local-first conflict handling.
+- Added cPanel IMAP setup guidance and explicit CalDAV connection fields in Connections.
 - Updated launcher, icon, app-menu entry, manifest, documentation and website copy for the new name.
 
 ## 0.7.1
