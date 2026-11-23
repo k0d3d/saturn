@@ -347,6 +347,38 @@ Item {
         onLoadFailed: { if(root.calendarSource === "omacal") { root.agenda = []; root.agendaDays = []; } }
     }
     Timer { id: saveTimer; interval: 300; onTriggered: root.flush() }
+    property int vaultRevision: -1
+    property string vaultMode: "sync"
+    function vaultSync(mode) {
+        if (!ready || error || vaultProcess.running) return;
+        root.flush();
+        vaultMode = ["push", "pull", "sync", "status"].indexOf(mode) >= 0 ? mode : "sync";
+        vaultProcess.running = true;
+    }
+    Process {
+        id: vaultProcess
+        command: ["python3", Qt.resolvedUrl("scripts/vault_sync.py").toString().replace("file://", ""), root.vaultMode]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var result = JSON.parse(text);
+                    if (result.ok && (result.pushed || result.pulled)) root.notice = "Markdown vault synced.";
+                    else if (!result.ok) root.notice = "Vault sync: " + (result.error || "failed");
+                } catch (e) {}
+            }
+        }
+        onExited: function(code) { if (code === 0) storage.reload(); }
+    }
+    Timer {
+        interval: 5000; repeat: true; running: root.ready
+        onTriggered: {
+            if (root.revision !== root.vaultRevision) {
+                root.vaultRevision = root.revision;
+                root.vaultSync("push");
+            }
+        }
+    }
+    Timer { interval: 60000; repeat: true; running: root.ready; onTriggered: root.vaultSync("sync") }
     Timer {
         interval: 1000; repeat: true; running: root.ready
         onTriggered: {
@@ -405,6 +437,7 @@ Item {
         function tab(name: string): void { root.eachWindow(w => { w.workspacePanel.insights = name === "Insights"; w.pinned = true; w.open(); }); }
         function tasks(command: string, first: string, second: string): string { return root.tasksCommand(command, first, second); }
         function notes(command: string, a: string, b: string, c: string, d: string): string { return root.notesCommand(command, a, b, c, d); }
+        function vaultSync(mode: string): void { root.vaultSync(mode || "sync"); }
         function notesOpen(): void { root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
         function notesSearch(query: string): void { root.notesQuery = query || ""; root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
         function data(command: string, a: string, b: string, c: string, d: string): string {

@@ -91,6 +91,10 @@ results with ids like `daily:2026-11-23`. They cannot be pinned or archived.
 5. Never put secrets, tokens or command output from unrelated files into tasks
    or notes, and never paste credentials into `workspace.json`.
 6. After a write, verify with `saturn data get` or the relevant list command.
-7. You can also edit Markdown in the Git mirror (Phase 6), then run
-   `saturn vault sync` if that command is available — but do not hand-edit
-   `workspace.json`.
+7. The Markdown mirror is at `~/Documents/saturn/` (override with `SATURN_VAULT`).
+   Tasks are `tasks/*.md`, library notes `notes/*.md`, daily notes `daily/*.md`.
+   Each file has a JSON front matter block with `id`, `title`, `updatedAt` and
+   state flags. Edit those files with a normal editor, then run
+   `saturn vault sync` to pull changes in and commit the batch to the local Git
+   repo. Conflicts are local-first and listed in `conflicts.md`. Never hand-edit
+   `workspace.json`, and never put secrets in vault files.

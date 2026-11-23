@@ -141,6 +141,15 @@ An OpenCode skill lets an agent read and update Saturn's tasks and notes without
 
 Both print JSON. See `skills/saturn/SKILL.md` for the command reference, data shapes and safety rules. The shell records agent command names in `workspace.sync.audit` — never note bodies or credentials.
 
+## Markdown vault
+
+Saturn mirrors tasks, library notes and daily notes into a human-readable Git repository at `~/Documents/saturn/` (override with `SATURN_VAULT`):
+
+- `tasks/YYYY-MM-DD-<id>.md`, `notes/YYYY-MM-DD-<slug>.md`, `daily/YYYY-MM-DD.md` — each with JSON front matter (`id`, `title`, tags, dates, state flags, timestamps) and a plain Markdown body.
+- `saturn vault status` reports the mirror; `saturn vault sync` pulls vault edits and commits changes locally. The shell also pushes workspace changes after ~5 seconds and does a full sync every minute.
+- Edits in both places are local-first: the newer `updatedAt` wins, two-sided changes keep the local version and are logged in `workspace.sync.conflicts` and `conflicts.md`. Deleting a vault file archives the local record and writes a tombstone rather than deleting data.
+- No credentials are written to the vault, and nothing is pushed to a remote automatically.
+
 ## Commands
 
 ```sh

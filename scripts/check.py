@@ -4,7 +4,7 @@ import json
 import subprocess
 
 root = Path(__file__).resolve().parent.parent
-for path in root.glob('*.py'):
+for path in [*root.glob('*.py'), *root.glob('scripts/*.py')]:
     ast.parse(path.read_text(), filename=str(path))
 for path in [root/'install.sh', *root.glob('scripts/*.sh'), *root.glob('bin/*')]:
     subprocess.run(['bash', '-n', str(path)], check=True)

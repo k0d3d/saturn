@@ -17,13 +17,22 @@ case "$action" in
     sub="${1:-get}"; a="${2:-}"; b="${3:-}"; c="${4:-}"; d="${5:-}"
     exec_shell_command=(omarchy-shell saturn data "$sub" "$a" "$b" "$c" "$d")
     ;;
+  vault)
+    shift
+    sub="${1:-status}"
+    if [[ "$sub" == "status" ]]; then
+      exec python3 "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/../scripts/vault_sync.py" status
+    fi
+    exec omarchy-shell saturn vaultSync "$sub"
+    ;;
   open|notesOpen|command|connections|dashboard|close|status|toggle) exec_shell_command=(omarchy-shell saturn "$action") ;;
   --version) echo 'Saturn 0.8.0'; exit 0 ;;
   --help|-h)
     echo 'Usage: saturn [open|notesOpen|command|connections|dashboard|close|status|toggle'
     echo '       tasks [list|add|complete|archive|restore|due] ...'
     echo '       notes [list|search|add|update|pin|archive|restore] ...'
-    echo '       data [get|sync-status|tasks ...|notes ...|add-task ...|add-note ...]]'
+    echo '       data [get|sync-status|tasks ...|notes ...|add-task ...|add-note ...]'
+    echo '       vault [push|pull|sync|status]'
     exit 0 ;;
   *)
     if [[ "$action" == assistant || "$action" == messages || "$action" == voice* || "$action" == grok* ]]; then
