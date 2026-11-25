@@ -2,10 +2,11 @@
 name: saturn
 description: >
   Read and update the local Saturn workspace (Omarchy plugin k0d3d.saturn): tasks,
-  due dates, completion, archive, the tagged note library and daily notes.
-  Use when the user asks about their Saturn tasks or notes, wants a task or note
-  created/updated, wants to search notes, or wants to inspect workspace data.
-  Saturn is a second brain stored in ~/.local/share/saturn/workspace.json.
+  due dates, completion, archive, the tagged note library, daily notes and the
+  SQLite knowledge graph. Use when the user asks about their Saturn tasks or
+  notes, wants a task or note created/updated, wants to search notes, inspect
+  workspace data, or explore/add connections between items. Saturn is a
+  second brain stored in ~/.local/share/saturn/.
 ---
 
 # Saturn workspace
@@ -79,6 +80,34 @@ Library note:
 Daily notes are keys of `notes` (`"YYYY-MM-DD": "text"`) and appear in search
 results with ids like `daily:2026-11-23`. They cannot be pinned or archived.
 `sync.audit` records agent command names with timestamps — never note bodies.
+
+## Knowledge graph
+
+The graph lives in `~/.local/share/saturn/graph.sqlite` and is authoritative for
+relationships. It is separate from `workspace.json`, which owns item content.
+All graph commands work with or without the desktop shell and print JSON.
+
+```sh
+saturn graph status                 # counts, last refresh, database path
+saturn graph reindex                # refresh tag and wiki edges
+saturn graph link <src> <relation> <dst> ["label"]
+saturn graph unlink <src> <relation> <dst>
+saturn graph neighbors <key> [depth] [relation]
+saturn graph path <from> <to> [maxDepth]
+saturn graph list [nodes|edges]
+saturn graph resolve <key-or-title>
+saturn graph forget <key>           # removes a node and every edge touching it
+saturn graph backup                 # snapshot into the local backup folder
+```
+
+Node keys are `task:<id>`, `note:<id>`, `daily:<YYYY-MM-DD>`, `event:<id>` and
+`tag:<tag>`. Commands also accept a unique title. Relations are lowercase
+letters, digits, `-` and `_`, up to 40 characters. Pick meaningful relations
+such as `supports`, `follows-up`, `derived-from` or `contradicts`; use the
+optional label for short context. `[[Title]]` links in note/task bodies and
+shared tags are added automatically and refreshed on each command. Never
+remove an agent edge unless the user asks; use `forget` only for an intentional
+deletion, since it removes the node and all its edges.
 
 ## Safety rules
 

@@ -160,6 +160,43 @@ Saturn mirrors tasks, library notes and daily notes into a human-readable Git re
 - Edits in both places are local-first: the newer `updatedAt` wins, two-sided changes keep the local version and are logged in `workspace.sync.conflicts` and `conflicts.md`. Deleting a vault file archives the local record and writes a tombstone rather than deleting data.
 - No credentials are written to the vault, and nothing is pushed to a remote automatically.
 
+## Knowledge graph
+
+A local SQLite graph at `${XDG_DATA_HOME:-~/.local/share}/saturn/graph.sqlite`
+stores relationships between tasks, notes, daily notes, events and tags. Edge
+data is authoritative: deleting an item from the workspace does not silently
+delete its relationships. Use `saturn graph forget <key>` when you really want
+a node and its edges removed, and `saturn graph backup` to snapshot the database.
+
+Nodes use qualified keys: `task:<id>`, `note:<id>`, `daily:<YYYY-MM-DD>`,
+`event:<id>` and `tag:<tag>`. Commands also accept a unique, case-insensitive
+title instead of a key. Connections come from three sources:
+
+- **Wiki links** — `[[Title]]`, `[[note:<id>]]` and similar references in task
+  bodies, library note bodies and daily notes.
+- **Shared tags** — each tag is a node; items connect to it with a `tagged`
+  edge, so co-tagged items are two hops apart.
+- **Agent edges** — explicit typed relations added with `saturn graph link`.
+
+Tag and wiki edges are regenerated from workspace content on every graph
+command; agent edges are never removed by a refresh. Every command prints JSON:
+
+```sh
+saturn graph status
+saturn graph reindex
+saturn graph link task:abc supports note:xyz "decision behind this task"
+saturn graph unlink task:abc supports note:xyz
+saturn graph neighbors task:abc 2
+saturn graph path task:abc note:xyz
+saturn graph list nodes
+saturn graph resolve "Project X"
+saturn graph forget task:abc
+saturn graph backup
+```
+
+The graph is local-only, never mirrored into the vault and never sent to a
+provider. No credentials are stored in it.
+
 ## Commands
 
 ```sh

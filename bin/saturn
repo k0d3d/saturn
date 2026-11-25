@@ -36,6 +36,10 @@ case "$action" in
     fi
     exec omarchy-shell saturn calendar "$sub" "$a" "$b"
     ;;
+  graph)
+    shift
+    exec python3 "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/../scripts/saturn_graph.py" "$@"
+    ;;
   open|notesOpen|command|connections|dashboard|close|status|toggle) exec_shell_command=(omarchy-shell saturn "$action") ;;
   --version) echo 'Saturn 0.8.0'; exit 0 ;;
   --help|-h)
@@ -45,6 +49,7 @@ case "$action" in
     echo '       data [get|sync-status|tasks ...|notes ...|add-task ...|add-note ...]'
     echo '       vault [push|pull|sync|status]'
     echo '       calendar [list|add|archive|sync|status]'
+    echo '       graph [status|reindex|link|unlink|neighbors|path|list|resolve|forget|backup]'
     exit 0 ;;
   *)
     if [[ "$action" == assistant || "$action" == messages || "$action" == voice* || "$action" == grok* ]]; then
