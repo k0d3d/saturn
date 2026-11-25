@@ -26,6 +26,7 @@ WORKSPACE = DATA_HOME / 'saturn' / 'workspace.json'
 BACKUPS = DATA_HOME / 'omaowl-backups'
 RELATION = re.compile(r'^[a-z0-9][a-z0-9_-]{0,39}$')
 WIKI = re.compile(r'\[\[([^\[\]]{1,200})\]\]')
+MENTION = re.compile(r'(?<![\w@])@([A-Za-z0-9_][A-Za-z0-9_ .\-:]{0,119})')
 KEY = re.compile(r'^(task|note|daily|event|tag):[A-Za-z0-9_.:@-]{1,200}$')
 
 
@@ -120,6 +121,15 @@ def wiki_targets(state):
                 yield key, targets_only
 
 
+def mention_bodies(state):
+    for task in state.get('tasks', []):
+        yield 'task:' + task['id'], task.get('body', '')
+    for note in state.get('notesV2', []):
+        yield 'note:' + note['id'], note.get('body', '')
+    for day, body in state.get('notes', {}).items():
+        yield 'daily:' + day, body
+
+
 def resolve(db, reference):
     ref = str(reference or '').strip().strip('[]')
     if not ref or len(ref) > 200:
@@ -130,6 +140,31 @@ def resolve(db, reference):
                       (ref,)).fetchall()
     if len(rows) == 1:
         return rows[0]['key']
+    return None
+
+
+def resolve_mention(db, reference):
+    """Resolve @references by exact key, exact title, then longest title prefix."""
+    ref = str(reference or '').strip().rstrip(' .,:;')
+    if not ref or len(ref) > 120:
+        return None
+    exact = resolve(db, ref)
+    if exact:
+        return exact
+    for size in range(len(ref), 2, -1):
+        if size < len(ref) and not ref[size].isspace():
+            continue
+        candidate = ref[:size].rstrip(' .,:;')
+        if len(candidate) < 3:
+            continue
+        if KEY.match(candidate) and db.execute('SELECT 1 FROM nodes WHERE key=?', (candidate,)).fetchone():
+            return candidate
+        rows = db.execute('SELECT key FROM nodes WHERE lower(title)=lower(?) AND stale=0',
+                          (candidate,)).fetchall()
+        if len(rows) == 1:
+            return rows[0]['key']
+        if len(rows) > 1:
+            return None
     return None
 
 
@@ -151,7 +186,7 @@ def refresh():
             for row in db.execute("SELECT key FROM nodes WHERE stale=0 AND key NOT LIKE 'tag:%'"):
                 if row['key'] not in wanted:
                     db.execute('UPDATE nodes SET stale=1, archived=1 WHERE key=?', (row['key'],))
-            db.execute("DELETE FROM edges WHERE origin IN ('wiki','tag')")
+            db.execute("DELETE FROM edges WHERE origin IN ('wiki','tag','mention')")
             for task in state.get('tasks', []) + state.get('notesV2', []):
                 key = ('task:' if 'completedAt' in task else 'note:') + task['id']
                 for tag in task.get('tags', []):
@@ -168,6 +203,14 @@ def refresh():
                                   (src,dst,relation,origin,label,created_at,updated_at)
                                   VALUES(?,?,?,?,?,?,?)''',
                                (key, target, 'references', 'wiki', raw[:200], stamp, stamp))
+            for key, body in mention_bodies(state):
+                for raw in MENTION.findall(body or ''):
+                    target = resolve_mention(db, raw)
+                    if target and target != key:
+                        db.execute('''INSERT OR IGNORE INTO edges
+                                      (src,dst,relation,origin,label,created_at,updated_at)
+                                      VALUES(?,?,?,?,?,?,?)''',
+                                   (key, target, 'mentions', 'mention', raw[:120], stamp, stamp))
             db.execute('INSERT INTO meta(key,value) VALUES(?,?) '
                        'ON CONFLICT(key) DO UPDATE SET value=excluded.value',
                        ('last_refresh', str(stamp)))
@@ -253,6 +296,27 @@ def neighbours(start, depth=1, relation=None):
                 found.append(row)
         found.sort(key=lambda row: (row['depth'], row['key']))
         return {'ok': True, 'root': origin, 'nodes': found}
+    finally:
+        db.close()
+
+
+def backlinks(key, relation=None):
+    refresh()
+    db = connect()
+    try:
+        target = resolve(db, key)
+        if not target:
+            return {'ok': False, 'error': 'Node could not be resolved uniquely'}
+        found = []
+        for edge in db.execute('SELECT * FROM edges WHERE dst=?', (target,)):
+            if relation and edge['relation'] != relation:
+                continue
+            row = node_row(db, edge['src'])
+            row.update({'relation': edge['relation'], 'origin': edge['origin'],
+                        'label': edge['label'], 'direction': 'in'})
+            found.append(row)
+        found.sort(key=lambda row: row['key'])
+        return {'ok': True, 'root': target, 'nodes': found}
     finally:
         db.close()
 
@@ -354,6 +418,8 @@ def main(argv):
         elif command in ('neighbors', 'neighbours'):
             result = neighbours(args[0] if args else '', args[1] if len(args) > 1 else 1,
                                 args[2] if len(args) > 2 else None)
+        elif command == 'backlinks':
+            result = backlinks(args[0] if args else '', args[1] if len(args) > 1 else None)
         elif command == 'path':
             result = path(args[0] if args else '', args[1] if len(args) > 1 else '',
                           args[2] if len(args) > 2 else 6)

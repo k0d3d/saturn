@@ -126,6 +126,39 @@ class GraphTests(unittest.TestCase):
         result = self.call('link', 'task:t1', '../bad relation', 'note:n1')
         self.assertFalse(result['ok'])
 
+    def at_mention(self, body):
+        state = json.loads(self.workspace.read_text())
+        state['tasks'][0]['body'] = body
+        self.workspace.write_text(json.dumps(state))
+        return self.call('reindex')
+
+    def test_at_mention_by_unique_title_creates_edge(self):
+        self.at_mention('Sync with @Project X tomorrow.')
+        found = self.call('neighbors', 'task:t1')['nodes']
+        mention = [row for row in found if row['origin'] == 'mention']
+        self.assertEqual([row['key'] for row in mention], ['note:n1'])
+        self.assertEqual(mention[0]['relation'], 'mentions')
+
+    def test_at_mention_by_exact_id_creates_edge(self):
+        self.at_mention('See @note:n1 for context.')
+        found = self.call('neighbors', 'task:t1')['nodes']
+        self.assertTrue(any(row['key'] == 'note:n1' and row['origin'] == 'mention'
+                            for row in found))
+
+    def test_ambiguous_at_mention_is_skipped(self):
+        state = json.loads(self.workspace.read_text())
+        state['tasks'].append(dict(state['tasks'][0], id='t2', title='Project X'))
+        self.workspace.write_text(json.dumps(state))
+        self.at_mention('Ask @Project X about this.')
+        found = self.call('neighbors', 'task:t1')['nodes']
+        self.assertFalse(any(row['origin'] == 'mention' for row in found))
+
+    def test_backlinks_lists_incoming_edges(self):
+        self.call('link', 'task:t1', 'supports', 'note:n1')
+        found = self.call('backlinks', 'note:n1')['nodes']
+        self.assertIn('task:t1', [row['key'] for row in found])
+        self.assertIn('supports', [row['relation'] for row in found])
+
 
 if __name__ == '__main__':
     unittest.main()

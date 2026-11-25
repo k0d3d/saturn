@@ -23,6 +23,8 @@
 - Fixed a provider race that could show a misleading “Unknown provider.” error instead of the real connection error.
 - Google Calendar now requests both `calendar.events` and `calendar.readonly`; the events scope alone cannot read calendar metadata and caused a 403. Reconnect once to grant both.
 - Added a local SQLite knowledge graph at `~/.local/share/saturn/graph.sqlite` with `saturn graph` commands, wiki links, tag hubs, agent-created typed edges, path/neighbour queries, explicit `forget` and backups. Edges are authoritative; workspace content stays in `workspace.json`.
+- Added `@` mentions as a fourth edge source: unique-title or exact-key resolution with longest-prefix matching, plus `saturn graph backlinks`.
+- Added a documentation page at `/docs.html` covering notes, links, the graph and agent use; fixed stale Oma Pulse branding and version on the landing pages.
 - Updated launcher, icon, app-menu entry, manifest, documentation and website copy for the new name.
 
 ## 0.7.1

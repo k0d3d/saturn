@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Saturn docs — notes, links and the knowledge graph</title>
+    <meta
+      name="description"
+      content="How Saturn stores notes, links them to tasks, and uses a local knowledge graph."
+    />
+    <meta name="theme-color" content="#171c17" />
+    <link rel="icon" href="/assets/saturn.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="header wrap">
+      <a class="brand" href="/" aria-label="Saturn home"
+        ><img src="/assets/saturn.svg" width="35" height="35" alt="" /><span
+          >saturn<span class="brand-dot">.</span></span
+        ></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="/">Home</a><a href="#notes">Notes</a><a href="#graph">Graph</a
+        ><a href="https://github.com/k0d3d/saturn"
+          >GitHub <span aria-hidden="true">↗</span></a
+        >
+      </nav>
+      <a class="button small" href="/#install">Get Saturn ↗</a>
+    </header>
+
+    <main id="main" class="docs wrap">
+      <div class="eyebrow"><span class="status-dot"></span> Documentation</div>
+      <h1>Notes that know<br /><em>how they connect.</em></h1>
+      <p class="lead">
+        Saturn keeps your day in plain files. Tasks, notes and events live in a
+        local JSON workspace, a Markdown mirror lives in Git, and a small SQLite
+        graph remembers how everything relates. Nothing leaves the machine.
+      </p>
+
+      <h2 id="notes">Notes</h2>
+      <p>
+        There are two kinds of note. The <strong>daily note</strong> is a
+        date-keyed page for quick capture — the Notepad card saves it after a
+        short pause. The <strong>library</strong> holds titled, tagged, dated
+        notes that can be pinned, archived and searched. Several library notes
+        can share the same date; a date is a relationship, not a unique key.
+      </p>
+      <p>
+        In the Markdown vault these become
+        <code>daily/YYYY-MM-DD.md</code> and
+        <code>notes/YYYY-MM-DD-title-id.md</code>. Each file carries JSON front
+        matter and a plain Markdown body. Editing the files and running
+        <code>saturn vault sync</code> is a supported way to write notes;
+        conflicts are local-first and recorded in <code>conflicts.md</code>.
+      </p>
+
+      <h2 id="links">Linking notes to tasks</h2>
+      <p>Three kinds of connection are recognised in note and task bodies:</p>
+      <ul>
+        <li>
+          <code>[[Project X]]</code> — a wiki link. It resolves to a unique note
+          or task title, or to an exact key such as <code>[[note:abc123]]</code>.
+        </li>
+        <li>
+          <code>@Project X</code> — a mention. It resolves by unique,
+          case-insensitive title; <code>@task:abc123</code> is exact. Long
+          prose is fine — Saturn matches the longest unique title prefix.
+          Ambiguous names create no edge rather than guessing.
+        </li>
+        <li>
+          <code>#work</code> tags — each tag is a node, so co-tagged items are
+          two hops apart. Tags are edited in the note's tag field, not in the
+          body.
+        </li>
+      </ul>
+      <p>
+        Each connection becomes an edge in the graph: <code>references</code>,
+        <code>mentions</code> and <code>tagged</code> respectively. In a later
+        pass the editor will offer an <code>@</code> autocomplete popup and
+        show detected links as chips.
+      </p>
+
+      <h2 id="graph">The knowledge graph</h2>
+      <p>
+        The graph lives at
+        <code>~/.local/share/saturn/graph.sqlite</code>. It is authoritative for
+        relationships: deleting an item from the workspace marks its node stale
+        but does not silently delete its edges. Use
+        <code>saturn graph forget &lt;key&gt;</code> for an intentional removal,
+        and <code>saturn graph backup</code> to snapshot the database.
+      </p>
+      <p>Nodes use qualified keys:</p>
+      <pre><code>task:abc123      note:abc123      daily:2026-11-25
+event:abc123     tag:work</code></pre>
+      <p>Every command prints JSON and works with or without the desktop shell:</p>
+      <pre><code>saturn graph status
+saturn graph neighbors task:abc123 2
+saturn graph backlinks note:abc123
+saturn graph path task:abc123 note:xyz789
+saturn graph link task:abc123 supports note:xyz789 "decision behind this"
+saturn graph unlink task:abc123 supports note:xyz789
+saturn graph list nodes
+saturn graph backup</code></pre>
+      <p>
+        Wiki, mention and tag edges are regenerated from workspace content on
+        every graph command. Agent-created edges are preserved. Relations are
+        lowercase words, digits, hyphens and underscores — names like
+        <code>supports</code>, <code>follows-up</code> or
+        <code>derived-from</code> make the graph easier to read later.
+      </p>
+
+      <h2 id="agents">For AI agents</h2>
+      <p>
+        The installed OpenCode skill documents the safe interfaces. With the
+        shell running, use <code>saturn data &lt;command&gt;</code>; without it,
+        use <code>scripts/workspace_api.py</code>. Agents should never hand-edit
+        <code>workspace.json</code>, and should use real ids obtained from a
+        list command. The graph is a separate, additive way to record context —
+        it never changes note or task content.
+      </p>
+      <p class="next">
+        Next: the daily note becomes a hub that indexes the day's notes, then
+        the editor gains <code>@</code> completion and connection chips. The
+        underlying data already supports both.
+      </p>
+    </main>
+
+    <!-- SITE_FOOTER -->
+  </body>
+</html>

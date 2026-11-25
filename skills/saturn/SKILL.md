@@ -93,6 +93,7 @@ saturn graph reindex                # refresh tag and wiki edges
 saturn graph link <src> <relation> <dst> ["label"]
 saturn graph unlink <src> <relation> <dst>
 saturn graph neighbors <key> [depth] [relation]
+saturn graph backlinks <key> [relation]
 saturn graph path <from> <to> [maxDepth]
 saturn graph list [nodes|edges]
 saturn graph resolve <key-or-title>
@@ -104,10 +105,13 @@ Node keys are `task:<id>`, `note:<id>`, `daily:<YYYY-MM-DD>`, `event:<id>` and
 `tag:<tag>`. Commands also accept a unique title. Relations are lowercase
 letters, digits, `-` and `_`, up to 40 characters. Pick meaningful relations
 such as `supports`, `follows-up`, `derived-from` or `contradicts`; use the
-optional label for short context. `[[Title]]` links in note/task bodies and
-shared tags are added automatically and refreshed on each command. Never
-remove an agent edge unless the user asks; use `forget` only for an intentional
-deletion, since it removes the node and all its edges.
+optional label for short context. `[[Title]]` links, `@Title` mentions and shared tags in
+note/task bodies are added automatically and refreshed on each command. Mentions
+resolve by unique title, by exact key (`@task:<id>`), or by the longest unique
+title prefix; ambiguous names create no edge. Use `backlinks` to find everything
+that points at a task or note. Never remove an agent edge unless the user asks;
+use `forget` only for an intentional deletion, since it removes the node and all
+its edges.
 
 ## Safety rules
 

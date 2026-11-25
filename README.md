@@ -174,6 +174,10 @@ title instead of a key. Connections come from three sources:
 
 - **Wiki links** — `[[Title]]`, `[[note:<id>]]` and similar references in task
   bodies, library note bodies and daily notes.
+- **`@` mentions** — `@Task title` resolves by unique case-insensitive title,
+  `@task:<id>`
+  is exact. The longest unique title prefix is used, so prose like
+  `@Project X tomorrow` works; ambiguous names create no edge.
 - **Shared tags** — each tag is a node; items connect to it with a `tagged`
   edge, so co-tagged items are two hops apart.
 - **Agent edges** — explicit typed relations added with `saturn graph link`.
@@ -187,6 +191,7 @@ saturn graph reindex
 saturn graph link task:abc supports note:xyz "decision behind this task"
 saturn graph unlink task:abc supports note:xyz
 saturn graph neighbors task:abc 2
+saturn graph backlinks note:xyz
 saturn graph path task:abc note:xyz
 saturn graph list nodes
 saturn graph resolve "Project X"

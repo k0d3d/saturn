@@ -49,7 +49,7 @@ case "$action" in
     echo '       data [get|sync-status|tasks ...|notes ...|add-task ...|add-note ...]'
     echo '       vault [push|pull|sync|status]'
     echo '       calendar [list|add|archive|sync|status]'
-    echo '       graph [status|reindex|link|unlink|neighbors|path|list|resolve|forget|backup]'
+    echo '       graph [status|reindex|link|unlink|neighbors|backlinks|path|list|resolve|forget|backup]'
     exit 0 ;;
   *)
     if [[ "$action" == assistant || "$action" == messages || "$action" == voice* || "$action" == grok* ]]; then

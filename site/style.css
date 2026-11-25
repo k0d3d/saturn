@@ -1477,6 +1477,91 @@ details code {
 .missing-page p {
   color: var(--muted);
 }
+.docs {
+  max-width: 860px;
+  padding-top: 72px;
+  padding-bottom: 96px;
+}
+.docs h1 {
+  font-size: clamp(46px, 6vw, 82px);
+  line-height: 1.05;
+  letter-spacing: -2.5px;
+  font-weight: 600;
+  margin: 24px 0 20px;
+}
+.docs h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.docs .lead {
+  font-size: 21px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 720px;
+  margin-bottom: 48px;
+}
+.docs h2 {
+  font-size: clamp(28px, 3vw, 38px);
+  letter-spacing: -1px;
+  margin: 52px 0 16px;
+  scroll-margin-top: 90px;
+}
+.docs p,
+.docs li {
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.7;
+  max-width: 760px;
+}
+.docs strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.docs ul {
+  padding-left: 22px;
+}
+.docs li {
+  margin-bottom: 12px;
+}
+.docs code {
+  font-family: var(--mono);
+  font-size: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: var(--text);
+}
+.docs pre {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 18px 20px;
+  overflow-x: auto;
+  max-width: 760px;
+}
+.docs pre code {
+  border: 0;
+  padding: 0;
+  background: none;
+  line-height: 1.8;
+}
+.docs .next {
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  color: var(--text);
+}
+@media (max-width: 520px) {
+  .docs {
+    padding-top: 44px;
+    padding-bottom: 64px;
+  }
+  .docs h1 {
+    letter-spacing: -1.5px;
+  }
+}
+
 @media (max-width: 520px) {
   .footer .footer-creator {
     order: 4;
