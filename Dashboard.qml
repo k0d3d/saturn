@@ -177,6 +177,7 @@ PanelWindow {
             Repeater {
                 model: 3
                 Rectangle {
+                    required property int index
                     width: 8; height: 3; radius: 1.5; color: theme.text
                     opacity: index < card.volume ? (card.hovered ? 0.8 : 0.62) : 0.12
                     Behavior on opacity { NumberAnimation { duration: 160 } }
