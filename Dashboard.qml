@@ -78,6 +78,21 @@ PanelWindow {
         dash.store.setTaskDue(dash.dueTaskId, dash.dueDraft);
         dash.dueTaskId = "";
     }
+    // Status is the rail's eyebrow. It states where the task sits without
+    // repeating the due date that already sits in the metadata line.
+    function taskStatus(task) {
+        if (!task) return "";
+        if (task.archived) return "ARCHIVED";
+        if (task.done) return "DONE";
+        if (!Dates.validDay(task.due)) return "NO DATE";
+        if (task.due < dash.store.today) return "OVERDUE";
+        if (task.due === dash.store.today) return "TODAY";
+        return "UPCOMING";
+    }
+    function selectFirstTask() {
+        dash.selectedTaskId = dash.taskRows.length ? dash.taskRows[0].id : "";
+    }
+    onTaskViewChanged: Qt.callLater(selectFirstTask)
     onFocusedCardChanged: {
         if (focusedCard === "mail") mailLoaded = true;
         if (focusedCard === "tasks" && !selectedTaskId && taskRows.length) selectedTaskId = taskRows[0].id;
@@ -446,22 +461,21 @@ PanelWindow {
                                     property var task: modelData
                                     property bool hovered: taskHover.hovered
                                     property bool selected: dash.selectedTaskId === task.id
-                                    width: ListView.view.width; height: 56
+                                    width: ListView.view.width; height: 44
                                     HoverHandler { id: taskHover }
                                     Rectangle {
                                         anchors.fill: parent; radius: 4
-                                        color: taskRow.selected ? theme.alpha(theme.text, 0.08) : taskRow.hovered ? theme.alpha(theme.text, 0.04) : "transparent"
-                                        Behavior on color { ColorAnimation { duration: Style.duration(140) } }
+                                        color: taskRow.selected ? theme.alpha(theme.text, 0.085) : taskRow.hovered ? theme.alpha(theme.text, 0.04) : "transparent"
+                                        Behavior on color { ColorAnimation { duration: Style.duration(120) } }
                                     }
                                     MouseArea {
                                         anchors.fill: parent; acceptedButtons: Qt.LeftButton
                                         onClicked: dash.selectedTaskId = taskRow.task.id
                                     }
                                     RowLayout {
-                                        id: taskContent
-                                        anchors.left: parent.left; anchors.right: parent.right
-                                        anchors.leftMargin: 6; anchors.rightMargin: 6
-                                        anchors.verticalCenter: parent.verticalCenter; spacing: 12
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10; anchors.rightMargin: 6
+                                        spacing: 10
                                         Item {
                                             id: taskCheck
                                             Layout.preferredWidth: 26; Layout.preferredHeight: 26
@@ -469,12 +483,12 @@ PanelWindow {
                                                 anchors.centerIn: parent; width: 18; height: 18; radius: 9
                                                 color: taskRow.task.done ? theme.accent : "transparent"
                                                 border.width: 1
-                                                border.color: taskRow.task.done ? theme.accent : taskRow.hovered ? theme.alpha(theme.text, 0.55) : theme.alpha(theme.text, 0.28)
-                                                Behavior on border.color { ColorAnimation { duration: Style.duration(140) } }
+                                                border.color: taskRow.task.done ? theme.accent : taskRow.hovered ? theme.alpha(theme.text, 0.55) : theme.alpha(theme.text, 0.26)
+                                                Behavior on border.color { ColorAnimation { duration: Style.duration(120) } }
                                                 Label {
                                                     anchors.centerIn: parent
                                                     text: taskRow.task.done ? "✓" : ""
-                                                    font.pixelSize: 12
+                                                    font.pixelSize: 11
                                                     color: theme.background
                                                 }
                                             }
@@ -488,76 +502,73 @@ PanelWindow {
                                                 from: 0.84; to: 1; duration: Style.duration(190); easing.type: Easing.OutBack
                                             }
                                         }
-                                        ColumnLayout {
-                                            Layout.fillWidth: true; spacing: 1
-                                            TextField {
-                                                id: taskTitleField
-                                                visible: dash.editingTaskId === taskRow.task.id
-                                                Layout.fillWidth: true; text: dash.taskDraft
-                                                onTextChanged: if (visible) dash.taskDraft = text
-                                                onAccepted: { dash.commitTask(); page.forceActiveFocus(); }
-                                                Keys.onEscapePressed: dash.editingTaskId = ""
-                                                color: theme.text; font.family: theme.font; font.pixelSize: 14
-                                                padding: 1; background: null; selectionColor: theme.accent; selectedTextColor: theme.background
-                                            }
-                                            Label {
-                                                visible: dash.editingTaskId !== taskRow.task.id
-                                                Layout.fillWidth: true; text: taskRow.task.title
-                                                maximumLineCount: 2; elide: Text.ElideRight
-                                                wrapMode: Text.Wrap; font.pixelSize: 14; lineHeight: 1.02
-                                                color: taskRow.task.done ? theme.muted : theme.text
-                                                font.strikeout: !!taskRow.task.done
-                                                MouseArea {
-                                                    anchors.fill: parent; hoverEnabled: true
-                                                    onClicked: dash.selectedTaskId = taskRow.task.id
-                                                    onDoubleClicked: {
-                                                        dash.editTask(taskRow.task);
-                                                        Qt.callLater(function() { taskTitleField.forceActiveFocus(); taskTitleField.selectAll(); });
-                                                    }
+                                        TextField {
+                                            id: taskTitleField
+                                            visible: dash.editingTaskId === taskRow.task.id
+                                            Layout.fillWidth: true; text: dash.taskDraft
+                                            onTextChanged: if (visible) dash.taskDraft = text
+                                            onAccepted: { dash.commitTask(); page.forceActiveFocus(); }
+                                            Keys.onEscapePressed: dash.editingTaskId = ""
+                                            color: theme.text; font.family: theme.font; font.pixelSize: 14
+                                            padding: 1; background: null
+                                            selectionColor: theme.accent; selectedTextColor: theme.background
+                                        }
+                                        Label {
+                                            visible: dash.editingTaskId !== taskRow.task.id
+                                            Layout.fillWidth: true; text: taskRow.task.title
+                                            maximumLineCount: 1; elide: Text.ElideRight
+                                            font.pixelSize: 14
+                                            color: taskRow.task.done ? theme.muted : theme.text
+                                            font.strikeout: !!taskRow.task.done
+                                            MouseArea {
+                                                anchors.fill: parent; hoverEnabled: true
+                                                onClicked: dash.selectedTaskId = taskRow.task.id
+                                                onDoubleClicked: {
+                                                    dash.editTask(taskRow.task);
+                                                    Qt.callLater(function() { taskTitleField.forceActiveFocus(); taskTitleField.selectAll(); });
                                                 }
                                             }
-                                            RowLayout {
-                                                spacing: 8
-                                                TextField {
-                                                    id: dueField
-                                                    visible: dash.dueTaskId === taskRow.task.id
-                                                    Layout.preferredWidth: 140; text: dash.dueDraft; font.pixelSize: 11
-                                                    onTextChanged: if (visible) dash.dueDraft = text
-                                                    onAccepted: { dash.commitDue(); page.forceActiveFocus(); }
-                                                    Keys.onEscapePressed: dash.dueTaskId = ""
-                                                    color: theme.text; font.family: theme.font; padding: 1
-                                                    background: Rectangle { color: theme.raised; radius: 2 }
-                                                }
-                                                Label {
-                                                    visible: dash.dueTaskId !== taskRow.task.id
-                                                    text: Dates.dueLabel(taskRow.task.due, dash.store.today)
-                                                    font.pixelSize: 11
-                                                    color: (!taskRow.task.done && taskRow.task.due && taskRow.task.due < dash.store.today) ? theme.urgent : theme.muted
-                                                    MouseArea {
-                                                        anchors.fill: parent; hoverEnabled: true
-                                                        onClicked: {
-                                                            dash.editDue(taskRow.task);
-                                                            Qt.callLater(function() { dueField.forceActiveFocus(); dueField.selectAll(); });
-                                                        }
-                                                    }
-                                                }
-                                                Repeater {
-                                                    model: (taskRow.task.tags || []).slice(0, 3)
-                                                    Label { text: "#" + modelData; font.pixelSize: 11; color: theme.muted; visible: !!text }
+                                        }
+                                        TextField {
+                                            id: dueField
+                                            visible: dash.dueTaskId === taskRow.task.id
+                                            Layout.preferredWidth: 120; text: dash.dueDraft; font.pixelSize: 11
+                                            onTextChanged: if (visible) dash.dueDraft = text
+                                            onAccepted: { dash.commitDue(); page.forceActiveFocus(); }
+                                            Keys.onEscapePressed: dash.dueTaskId = ""
+                                            color: theme.text; font.family: theme.font; padding: 1
+                                            background: Rectangle { color: theme.raised; radius: 2 }
+                                        }
+                                        Label {
+                                            Layout.preferredWidth: 78
+                                            horizontalAlignment: Text.AlignRight
+                                            visible: dash.dueTaskId !== taskRow.task.id
+                                            text: Dates.dueLabel(taskRow.task.due, dash.store.today)
+                                            font.pixelSize: 11; elide: Text.ElideLeft
+                                            color: (!taskRow.task.done && taskRow.task.due && taskRow.task.due < dash.store.today) ? theme.urgent : theme.muted
+                                            MouseArea {
+                                                anchors.fill: parent; hoverEnabled: true
+                                                enabled: !taskRow.task.done
+                                                onClicked: {
+                                                    dash.editDue(taskRow.task);
+                                                    Qt.callLater(function() { dueField.forceActiveFocus(); dueField.selectAll(); });
                                                 }
                                             }
                                         }
                                         RowLayout {
-                                            Layout.preferredWidth: 46; Layout.alignment: Qt.AlignVCenter
-                                            spacing: 2; opacity: taskRow.hovered ? 1 : 0
-                                            Behavior on opacity { NumberAnimation { duration: Style.duration(140) } }
+                                            Layout.preferredWidth: 56; Layout.alignment: Qt.AlignVCenter
+                                            spacing: 0; opacity: taskRow.hovered ? 1 : 0
+                                            Behavior on opacity { NumberAnimation { duration: Style.duration(120) } }
                                             Glyph {
                                                 text: "▶"; onClicked: dash.store.chooseFocus(taskRow.task.title, 1500)
                                                 Accessible.name: "Focus on task"; ToolTip.visible: hovered; ToolTip.text: "Focus"
                                             }
                                             Glyph {
                                                 text: dash.taskView === "Archive" ? "↩" : "⊟"
-                                                onClicked: dash.taskView === "Archive" ? dash.store.restoreTask(taskRow.task.id) : dash.store.archiveTask(taskRow.task.id)
+                                                onClicked: {
+                                                    if (dash.taskView === "Archive") dash.store.restoreTask(taskRow.task.id);
+                                                    else { dash.store.archiveTask(taskRow.task.id); Qt.callLater(dash.selectFirstTask); }
+                                                }
                                                 Accessible.name: dash.taskView === "Archive" ? "Restore task" : "Archive task"
                                                 ToolTip.visible: hovered; ToolTip.text: dash.taskView === "Archive" ? "Restore" : "Archive"
                                             }
@@ -573,52 +584,90 @@ PanelWindow {
                             // The right rail is intentionally provisional. It owns
                             // task context now; graph, notes or agenda can move in.
                             Item {
+                                id: taskRail
                                 visible: dash.focusedCard === "tasks"
                                 anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
                                 width: Math.round(parent.width * 0.40)
-                                Rectangle { anchors.fill: parent; radius: 6; color: theme.alpha(theme.text, 0.04) }
+                                Rectangle {
+                                    anchors.fill: parent; radius: 8
+                                    color: theme.alpha(theme.text, 0.055)
+                                }
                                 ColumnLayout {
-                                    anchors.fill: parent; anchors.margins: 18; spacing: 10
-                                    Label { text: "Context"; font.pixelSize: 11; opacity: 0.6; font.letterSpacing: 1 }
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: dash.selectedTask ? dash.selectedTask.title : "Select a task"
-                                    font.pixelSize: 19; wrapMode: Text.Wrap
-                                }
-                                Label {
-                                    Layout.fillWidth: true; visible: !!dash.selectedTask
-                                    text: dash.selectedTask ? Dates.dueLabel(dash.selectedTask.due, dash.store.today) : ""
-                                    font.pixelSize: 12; opacity: 0.7
-                                }
-                                RowLayout {
-                                    visible: !!dash.selectedTask
-                                    Repeater {
-                                        model: dash.selectedTask ? (dash.selectedTask.tags || []) : []
-                                        Label { text: "#" + modelData; font.pixelSize: 11; color: theme.muted }
+                                    anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+                                    anchors.leftMargin: 28; anchors.rightMargin: 28
+                                    width: Math.min(taskRail.width - 56, 540)
+                                    spacing: 0
+                                    Label {
+                                        visible: !!dash.selectedTask
+                                        text: dash.taskStatus(dash.selectedTask)
+                                        font.pixelSize: 11; font.letterSpacing: 1.4
+                                        font.weight: Font.DemiBold
+                                        color: dash.selectedTask && dash.selectedTask.due && !dash.selectedTask.done && dash.selectedTask.due < dash.store.today ? theme.urgent : theme.muted
                                     }
-                                }
-                                Label {
-                                    Layout.fillWidth: true; visible: !!dash.selectedTask && !!dash.selectedTask.body
-                                    text: dash.selectedTask ? dash.selectedTask.body : ""
-                                    wrapMode: Text.Wrap; maximumLineCount: 8; font.pixelSize: 13; opacity: 0.7
-                                }
-                                Item { Layout.fillHeight: true }
-                                RowLayout {
-                                    visible: !!dash.selectedTask
-                                    Tab {
-                                        text: "Focus 25m"
-                                        onClicked: {
-                                            dash.store.chooseFocus(dash.selectedTask.title, 1500);
-                                            dash.focusedCard = "focus";
+                                    Label {
+                                        Layout.fillWidth: true
+                                        Layout.topMargin: 10
+                                        text: dash.selectedTask ? dash.selectedTask.title : "Select a task"
+                                        font.pixelSize: 22; lineHeight: 1.15
+                                        wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
+                                    }
+                                    RowLayout {
+                                        Layout.topMargin: 10
+                                        spacing: 10
+                                        visible: !!dash.selectedTask
+                                        Label {
+                                            text: Dates.dueLabel(dash.selectedTask ? dash.selectedTask.due : "", dash.store.today) || "No due date"
+                                            font.pixelSize: 12
+                                            color: dash.selectedTask && dash.selectedTask.due && !dash.selectedTask.done && dash.selectedTask.due < dash.store.today ? theme.urgent : theme.alpha(theme.text, 0.62)
+                                        }
+                                        Repeater {
+                                            model: dash.selectedTask ? (dash.selectedTask.tags || []) : []
+                                            Label { text: "#" + modelData; font.pixelSize: 12; color: theme.alpha(theme.text, 0.62) }
                                         }
                                     }
-                                    Glyph {
-                                        text: dash.selectedTask && dash.selectedTask.archived ? "↩" : "⊟"
-                                        onClicked: dash.selectedTask && (dash.selectedTask.archived ? dash.store.restoreTask(dash.selectedTask.id) : dash.store.archiveTask(dash.selectedTask.id))
-                                        Accessible.name: "Archive selected task"
+                                    Label {
+                                        Layout.fillWidth: true
+                                        Layout.topMargin: 22
+                                        visible: !!dash.selectedTask && !!dash.selectedTask.body
+                                        text: dash.selectedTask ? dash.selectedTask.body : ""
+                                        wrapMode: Text.Wrap; font.pixelSize: 13; lineHeight: 1.55
+                                        color: theme.alpha(theme.text, 0.78)
+                                    }
+                                    Label {
+                                        Layout.topMargin: 22
+                                        visible: !dash.selectedTask || !dash.selectedTask.body
+                                        text: "No notes on this task."
+                                        font.pixelSize: 13
+                                        color: theme.alpha(theme.text, 0.4)
+                                    }
+                                    Item { Layout.fillHeight: true }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        visible: !!dash.selectedTask
+                                        Tab {
+                                            text: "Focus 25m"
+                                            onClicked: {
+                                                dash.store.chooseFocus(dash.selectedTask.title, 1500);
+                                                dash.focusedCard = "focus";
+                                            }
+                                        }
+                                        Tab {
+                                            text: "Edit"
+                                            onClicked: dash.editTask(dash.selectedTask)
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                        Glyph {
+                                            text: dash.selectedTask && dash.selectedTask.archived ? "↩" : "⊟"
+                                            onClicked: {
+                                                if (!dash.selectedTask) return;
+                                                if (dash.selectedTask.archived) dash.store.restoreTask(dash.selectedTask.id);
+                                                else { dash.store.archiveTask(dash.selectedTask.id); Qt.callLater(dash.selectFirstTask); }
+                                            }
+                                            Accessible.name: "Archive selected task"
+                                        }
                                     }
                                 }
-                            }
                             }
                         }
                         Rectangle {
