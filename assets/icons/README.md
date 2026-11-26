@@ -22,5 +22,8 @@ colorization, so the same asset follows the active Omarchy theme.
 
 `assets/saturn.svg` is the brand mark generated with Recraft V3 SVG on Replicate,
 with the generated full-canvas backdrop removed so it blends into any surface.
-`assets/saturn.png` is its 512px transparent raster for the shell header and bar,
-where it is scaled down with mipmaps.
+`assets/saturn.png` is its 512px transparent raster for the bar, where it is
+scaled down with mipmaps. The dashboard header uses the original split into
+paint-order layers — `saturn-back.svg`, `saturn-planet.svg`, `saturn-ring.svg`
+and five `saturn-star-N.svg` dots — so the ring can counter-rotate and the stars
+twinkle in QML. Qt renders SVG statically, so the motion lives in `SaturnMark.qml`.
