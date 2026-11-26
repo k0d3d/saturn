@@ -590,7 +590,7 @@ PanelWindow {
                                 width: Math.round(parent.width * 0.40)
                                 Rectangle {
                                     anchors.fill: parent; radius: 8
-                                    color: theme.alpha(theme.text, 0.055)
+                                    color: theme.alpha(theme.text, 0.07)
                                 }
                                 ColumnLayout {
                                     anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
@@ -622,7 +622,11 @@ PanelWindow {
                                         }
                                         Repeater {
                                             model: dash.selectedTask ? (dash.selectedTask.tags || []) : []
-                                            Label { text: "#" + modelData; font.pixelSize: 12; color: theme.alpha(theme.text, 0.62) }
+                                            Label {
+                                                required property var modelData
+                                                text: "#" + modelData
+                                                font.pixelSize: 12; color: theme.alpha(theme.text, 0.62)
+                                            }
                                         }
                                     }
                                     Label {
