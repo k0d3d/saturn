@@ -593,6 +593,7 @@ PanelWindow {
                             }
                         }
                         Rectangle {
+                            id: paneDivider
                             visible: dash.focusedCard === "tasks"
                             x: Math.round(parent.width * 0.40)
                             width: 1
@@ -897,7 +898,7 @@ PanelWindow {
                     Item {
                         id: taskDetail
                         visible: dash.focusedCard === "tasks"
-                        anchors.left: taskLeft.right; anchors.right: parent.right
+                        anchors.left: paneDivider.right; anchors.right: parent.right
                         anchors.top: parent.top; anchors.bottom: parent.bottom
                         ColumnLayout {
                             anchors.fill: parent; anchors.margins: 32; spacing: 0
