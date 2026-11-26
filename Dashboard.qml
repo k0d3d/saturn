@@ -1328,7 +1328,6 @@ PanelWindow {
                             readonly property int columns: Math.max(1, Math.min(4, Math.floor(width / 300)))
                             cellWidth: Math.max(220, Math.floor(width / columns))
                             cellHeight: 190
-                            spacing: 12
                             ScrollBar.vertical: ScrollBar {
                                 policy: ScrollBar.AsNeeded; width: 4
                                 background: null
