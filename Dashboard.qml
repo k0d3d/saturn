@@ -39,6 +39,27 @@ PanelWindow {
     // Empty means the five-card grid. A role means that card has expanded to
     // the full workspace; no separate collapsed window exists.
     property string focusedCard: ""
+    readonly property var switchRoles: ["tasks", "notes", "focus", "events", "mail"].filter(function(role) { return role !== dash.focusedCard; })
+    function cardColor(role) {
+        if (role === "tasks") return theme.tasks;
+        if (role === "notes") return theme.notes;
+        if (role === "focus") return theme.focus;
+        if (role === "events") return theme.events;
+        return theme.mail;
+    }
+    function roleLabel(role) {
+        return ({tasks: "Tasks", notes: "Notepad", focus: "Focus", events: "Events", mail: "Mail"})[role] || role;
+    }
+    function roleIcon(role) {
+        return ({tasks: "list-todo", notes: "notebook-pen", focus: "play", events: "calendar", mail: "mail"})[role] || "link";
+    }
+    function roleCaption(role) {
+        if (role === "tasks") return dash.store.remainingTasks + " to do";
+        if (role === "notes") return dash.dayNotes.length + " linked";
+        if (role === "focus") return dash.store.timerText;
+        if (role === "events") return dash.store.agenda.length + " today";
+        return dash.store.newMail.length + " new";
+    }
     property bool frosted: true
     property bool frostReady: false
     readonly property int taskAttention: Visual.attention(dash.store.tasks, dash.store.today, 0).level
@@ -163,6 +184,14 @@ PanelWindow {
     function selectFirstTask() {
         var first = dash.taskItems.find(function(item) { return !item.group; });
         dash.selectedTaskId = first ? first.task.id : "";
+    }
+    // Escape has to work even when a text field owns focus, so it also exists as
+    // a window shortcut instead of only on the page's key handler.
+    function handleEscape() {
+        if (dash.editingTaskId) { dash.editingTaskId = ""; return; }
+        if (dash.dueTaskId) { dash.dueTaskId = ""; return; }
+        if (dash.focusedCard) { dash.focusedCard = ""; return; }
+        dash.close();
     }
     onTaskViewChanged: {
         if (taskView === "Tags") selectedTaskId = "";
@@ -518,12 +547,15 @@ PanelWindow {
     FocusScope {
         id: page; anchors.fill: parent; focus: true; z: 2
         HoverHandler { id: workspaceHover; onHoveredChanged: { if (hovered) { dash.awaitingEntry = false; leaveTimer.stop(); } else leaveTimer.restart(); } }
+        Shortcut {
+            sequence: "Escape"
+            context: Qt.WindowShortcut
+            onActivated: dash.handleEscape()
+        }
         Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Escape) {
-                if (dash.editingTaskId) { dash.editingTaskId = ""; event.accepted = true; return; }
-                if (dash.dueTaskId) { dash.dueTaskId = ""; event.accepted = true; return; }
-                if (dash.focusedCard) { dash.focusedCard = ""; event.accepted = true; }
-                else dash.close();
+                dash.handleEscape();
+                event.accepted = true;
                 return;
             }
             if (event.key === Qt.Key_N && !dash.editing) {
@@ -563,11 +595,68 @@ PanelWindow {
                 onVisibleChanged: if (visible) { opacity = 0; workspaceReveal.start(); }
                 Layout.fillWidth: true; Layout.fillHeight: true
                 readonly property var slots: Visual.grid(width, height)
+                readonly property real switchWidth: Math.max(188, Math.round(width * 0.15))
                 function sx(role) { return dash.focusedCard === role ? 0 : slots.cards[role].x }
                 function sy(role) { return dash.focusedCard === role ? 0 : slots.cards[role].y }
-                function sw(role) { return dash.focusedCard === role ? width : slots.cards[role].width }
+                function sw(role) { return dash.focusedCard === role ? width - switchWidth - 16 : slots.cards[role].width }
                 function sh(role) { return dash.focusedCard === role ? height : slots.cards[role].height }
                 NumberAnimation { id: workspaceReveal; target: workspaceGrid; property: "opacity"; from: 0; to: 1; duration: Style.duration(180); easing.type: Easing.OutCubic }
+                // A focused card leaves room for the other cards as small switches
+                // instead of taking the whole workspace.
+                Item {
+                    id: switchRail
+                    readonly property bool active: dash.focusedCard !== ""
+                    x: workspaceGrid.width - workspaceGrid.switchWidth
+                    width: workspaceGrid.switchWidth
+                    anchors.top: parent.top; anchors.bottom: parent.bottom
+                    enabled: active
+                    opacity: active ? 1 : 0
+                    z: 20
+                    Behavior on opacity { NumberAnimation { duration: Style.duration(180); easing.type: Easing.OutCubic } }
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.topMargin: 10; anchors.bottomMargin: 10
+                        spacing: 8
+                        Label {
+                            text: "SWITCH"
+                            font.pixelSize: 10; font.letterSpacing: 1.4; font.weight: Font.DemiBold
+                            color: theme.alpha(theme.text, 0.45)
+                            Layout.leftMargin: 2; Layout.bottomMargin: 2
+                        }
+                        Repeater {
+                            model: dash.switchRoles
+                            Rectangle {
+                                id: mini
+                                required property string modelData
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 90
+                                radius: 6
+                                color: dash.cardColor(mini.modelData)
+                                border.width: 1
+                                border.color: miniHover.hovered ? theme.alpha(theme.text, 0.22) : theme.alpha(theme.text, 0.08)
+                                Behavior on border.color { ColorAnimation { duration: Style.duration(120) } }
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 14
+                                    spacing: 12
+                                    Icon { name: dash.roleIcon(mini.modelData); size: 20; tint: theme.alpha(theme.text, 0.8) }
+                                    ColumnLayout {
+                                        Layout.fillWidth: true; spacing: 2
+                                        Label { text: dash.roleLabel(mini.modelData); font.pixelSize: 14; font.weight: Font.DemiBold }
+                                        Label { text: dash.roleCaption(mini.modelData); font.pixelSize: 11; color: theme.alpha(theme.text, 0.6) }
+                                    }
+                                }
+                                HoverHandler { id: miniHover }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: dash.focusedCard = mini.modelData
+                                }
+                            }
+                        }
+                        Item { Layout.fillHeight: true }
+                    }
+                }
                 Card {
                     role: "tasks"; volume: Visual.volume(dash.taskRows.length); attention: dash.taskAttention
                     color: theme.tasks
@@ -619,7 +708,7 @@ PanelWindow {
                             }
                         }
                         RowLayout {
-                            Layout.fillWidth: true; spacing: 14
+                            Layout.fillWidth: true; spacing: 10
                             Tab { text: "Today " + dash.taskCount("Today"); selected: dash.taskView === "Today"; onClicked: dash.taskView = "Today" }
                             Tab { text: "Upcoming " + dash.taskCount("Upcoming"); selected: dash.taskView === "Upcoming"; onClicked: dash.taskView = "Upcoming" }
                             Tab { text: "All " + dash.taskCount("All"); selected: dash.taskView === "All"; onClicked: dash.taskView = "All" }
