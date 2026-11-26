@@ -46,10 +46,12 @@ The selected card animates from its grid slot to 84% of the workspace over
 220 ms; the other cards fade out and return as a `SWITCH` rail in the remaining
 strip. Each tile shows its icon, name and a live caption (todo count, timer,
 events today, unread mail); clicking one swaps focus without returning to the
-grid. `Esc`, `0` or `×` returns to the same grid, preserving spatial memory.
-Escape is a window shortcut, so it works even while a text field owns focus: one
-press leaves a focused card, the next closes the workspace. A card's controls
-never move during hover; only the surface and its stack are animated.
+grid. `Esc` or `0` returns to the grid from a card; the header `×` closes the
+workspace. Escape is a window shortcut, so it works even while a text field owns
+focus: one press leaves a focused card, the next closes the workspace. Closing
+saves the open card, selected note or task, day and tab per screen to a local
+`ui-state.json`, so the next launch reopens that view. A card's controls never
+move during hover; only the surface and its stack are animated.
 
 Controls are text-first. Filters and view switches are tabs with an animated
 underline, task actions appear only on hover, and the Focus card is driven by a

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Closing the workspace (X, Escape or any other close path) now saves the open card and its navigation per screen to a local `ui-state.json`. Relaunching reopens that card, note, task, day and tab instead of resetting to the five-card grid. The state stays out of the synced workspace file.
 - The due-date field now accepts `today`, `tomorrow`, `next <weekday>` and ISO dates. Previously typing `tomorrow` there was silently discarded; both task creation and inline due editing use the same parser as title dates.
 
 - Added a fullscreen, borderless card workspace: asymmetric five-card grid, exposed stack layers for volume, attention dot, session-local last-viewed tick, and animated expand/collapse focus.

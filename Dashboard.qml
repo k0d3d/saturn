@@ -47,6 +47,10 @@ PanelWindow {
     // Empty means the five-card grid. A role means that card has expanded to
     // the full workspace; no separate collapsed window exists.
     property string focusedCard: ""
+    // Panel navigation survives closing and reopening. Guards keep the normal
+    // view handlers from resetting a restored card on the way in.
+    property bool restoringState: false
+    property bool stateRestored: false
     readonly property var switchRoles: ["tasks", "notes", "focus", "events", "mail"].filter(function(role) { return role !== dash.focusedCard; })
     function cardColor(role) {
         if (role === "tasks") return theme.tasks;
@@ -321,12 +325,14 @@ PanelWindow {
         dash.close();
     }
     onTaskViewChanged: {
+        if (dash.restoringState) return;
         if (taskView === "Tags") selectedTaskId = "";
         else Qt.callLater(selectFirstTask);
     }
     onSelectedTaskIdChanged: dash.refreshGraph()
     onFocusedCardChanged: {
         if (focusedCard === "mail") mailLoaded = true;
+        if (dash.restoringState) return;
         if (focusedCard === "notes") notesView = "board";
         if (focusedCard !== "notes") { notesView = "write"; openNoteId = ""; }
         if (focusedCard === "tasks") {
@@ -360,8 +366,15 @@ PanelWindow {
     WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     color: "transparent"
     onVisibleChanged: {
-        if (!visible) { frostReady = false; frostLoader.active = false; focusedCard = ""; editingTaskId = ""; dueTaskId = ""; return; }
+        if (!visible) {
+            dash.saveState();
+            frostReady = false; frostLoader.active = false;
+            focusedCard = ""; editingTaskId = ""; dueTaskId = "";
+            stateRestored = false;
+            return;
+        }
         openedWorkspace = activeWorkspaceId;
+        dash.restoreState();
         awaitingEntry = compact; page.forceActiveFocus(); store.mail.refreshIfStale();
         if(store.calendarSource === "google") store.googleCalendar.refreshIfStale();
         if (compact && !pinned) leaveTimer.restart();
@@ -398,7 +411,47 @@ PanelWindow {
         radius: 0
         Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
-    function close() { store.flush(); dismissed(); }
+    function saveState() {
+        if (!dash.store || !dash.store.storagePrepared) return;
+        dash.store.saveUiState(dash.screen.name, {
+            focusedCard: dash.focusedCard,
+            notesView: dash.notesView,
+            openNoteId: dash.openNoteId,
+            taskView: dash.taskView,
+            selectedTaskId: dash.selectedTaskId,
+            taskTag: dash.taskTag,
+            calendarDate: dash.calendarDate,
+            noteDay: dash.store.noteDay,
+            insights: dash.insights,
+            connectionsOpen: dash.connectionsOpen,
+            frosted: dash.frosted
+        });
+    }
+    function restoreState() {
+        if (dash.stateRestored || !dash.store || !dash.store.storagePrepared) return;
+        var saved = dash.store.uiStateFor(dash.screen.name);
+        if (!saved || Object.keys(saved).length === 0) return;
+        dash.restoringState = true;
+        dash.connectionsOpen = !!saved.connectionsOpen;
+        dash.insights = !!saved.insights;
+        dash.taskView = saved.taskView || "Today";
+        dash.selectedTaskId = saved.selectedTaskId || "";
+        dash.taskTag = saved.taskTag || "";
+        dash.calendarDate = saved.calendarDate || dash.store.calendarToday;
+        dash.store.noteDay = saved.noteDay || dash.store.today;
+        dash.frosted = saved.frosted !== false;
+        dash.focusedCard = saved.focusedCard || "";
+        if (dash.focusedCard === "notes" && saved.notesView === "edit" && saved.openNoteId) {
+            dash.viewNote(saved.openNoteId);
+        } else {
+            dash.notesView = saved.notesView === "write" ? "write" : "board";
+            dash.openNoteId = "";
+        }
+        dash.restoringState = false;
+        dash.stateRestored = true;
+        if (dash.focusedCard === "tasks" && !dash.selectedTaskId) Qt.callLater(selectFirstTask);
+    }
+    function close() { dash.saveState(); store.flush(); dismissed(); }
     function moveDay(offset) {
         var index = Math.max(0, calendarIndex) + offset;
         if (index >= 0 && index < store.agendaDays.length) calendarDate = store.agendaDays[index].date;
@@ -406,6 +459,7 @@ PanelWindow {
     function eventClock(ms) { return store.calendarClocks[String(ms)] || Qt.formatTime(new Date(ms), "h:mm AP"); }
     Connections {
         target: dash.store
+        function onUiStateChanged() { if (dash.visible && !dash.stateRestored) dash.restoreState(); }
         function onAgendaDaysChanged() { if(dash.store.agendaDays.length && !dash.store.agendaDays.some(d=>d.date === dash.calendarDate)) dash.calendarDate=dash.store.agendaDays[0].date; }
         function onTaskAdded(title) { if (taskInput.text.trim() === title) { taskInput.text = ""; dueInput.text = ""; } }
     }

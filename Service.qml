@@ -24,6 +24,22 @@ Item {
     property string notesQuery: ""
     // UI-local navigation target. It never touches workspace.json.
     property string notesSelection: ""
+    // Per-screen panel navigation, saved separately from the synced workspace.
+    property var uiState: ({})
+    function uiStateFor(screenName) {
+        var entry = root.uiState[String(screenName || "")];
+        return entry && typeof entry === "object" ? entry : ({});
+    }
+    function saveUiState(screenName, state) {
+        var key = String(screenName || "");
+        if (!key || !root.storagePrepared) return;
+        var next = {};
+        for (var k in root.uiState) next[k] = root.uiState[k];
+        next[key] = state || {};
+        root.uiState = next;
+        uiStorage.setText(JSON.stringify(next));
+    }
+
     // Canonical serialization the shell last wrote, used to ignore its own file events.
     property string lastPersisted: ""
     property double now: Date.now()
@@ -415,6 +431,21 @@ Item {
         }
         onLoadFailed: { if (root.storagePrepared) root.error = "Workspace file unavailable. Check " + root.dataDir; }
         onSaveFailed: { root.error = "Saving failed. Keep this workspace open and check disk space."; }
+    }
+    FileView {
+        id: uiStorage
+        path: root.storagePrepared ? root.dataDir + "/ui-state.json" : ""
+        watchChanges: false
+        atomicWrites: true
+        printErrors: false
+        onLoaded: {
+            try {
+                var parsed = JSON.parse(text());
+                root.uiState = parsed && typeof parsed === "object" ? parsed : {};
+            } catch (e) { root.uiState = {}; }
+        }
+        onLoadFailed: root.uiState = {}
+        onSaveFailed: console.warn("Saturn: could not save panel state")
     }
     FileView {
         id: feed
