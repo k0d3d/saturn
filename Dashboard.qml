@@ -414,7 +414,10 @@ PanelWindow {
                                 Layout.fillWidth: true; font.pixelSize: 22; font.weight: Font.DemiBold
                                 text: ({Today: "Today’s tasks", Upcoming: "Upcoming", All: "All tasks", Completed: "Completed", Archive: "Archive"})[dash.taskView]
                             }
-                            Label { text: Qt.formatDate(new Date(dash.store.now), "ddd, d MMM"); font.pixelSize: 12 }
+                            Label {
+                                text: Qt.formatDate(new Date(dash.store.now), "ddd, d MMM") + " · " + dash.taskRows.length + (dash.taskView === "Completed" ? " done" : " to do")
+                                font.pixelSize: 12; opacity: 0.7
+                            }
                         }
                         RowLayout {
                             Layout.fillWidth: true; spacing: 14
@@ -423,25 +426,27 @@ PanelWindow {
                             Tab { text: "All " + dash.taskCount("All"); selected: dash.taskView === "All"; onClicked: dash.taskView = "All" }
                             Tab { text: "Done " + dash.taskCount("Completed"); selected: dash.taskView === "Completed"; onClicked: dash.taskView = "Completed" }
                             Tab { text: "Archive " + dash.taskCount("Archive"); selected: dash.taskView === "Archive"; onClicked: dash.taskView = "Archive" }
-                            Item { Layout.fillWidth: true }
-                            Label { text: dash.taskRows.length + (dash.taskView === "Completed" ? " done" : " to do"); font.pixelSize: 12; opacity: 0.7 }
                         }
                         Item {
                             Layout.fillWidth: true; Layout.fillHeight: true
                             ListView {
                                 id: taskList
                                 anchors.fill: parent
-                                anchors.rightMargin: dash.focusedCard === "tasks" ? 320 : 0
-                                clip: true; spacing: 4
+                                anchors.rightMargin: dash.focusedCard === "tasks" ? 380 : 0
+                                clip: true; spacing: 2; topMargin: 4; bottomMargin: 4
                                 model: dash.taskRows
-                                ScrollBar.vertical: ScrollBar {}
+                                ScrollBar.vertical: ScrollBar {
+                                    policy: ScrollBar.AsNeeded; width: 4
+                                    background: null
+                                    contentItem: Rectangle { implicitWidth: 4; radius: 2; color: theme.alpha(theme.text, 0.28) }
+                                }
                                 delegate: Item {
                                     id: taskRow
                                     required property var modelData
                                     property var task: modelData
                                     property bool hovered: taskHover.hovered
                                     property bool selected: dash.selectedTaskId === task.id
-                                    width: ListView.view.width; height: Math.max(64, taskContent.implicitHeight + 12)
+                                    width: ListView.view.width; height: 68
                                     HoverHandler { id: taskHover }
                                     Rectangle {
                                         anchors.fill: parent; radius: 4
@@ -454,19 +459,37 @@ PanelWindow {
                                     }
                                     RowLayout {
                                         id: taskContent
-                                        anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 10
-                                        Glyph {
+                                        anchors.left: parent.left; anchors.right: parent.right
+                                        anchors.leftMargin: 6; anchors.rightMargin: 6
+                                        anchors.verticalCenter: parent.verticalCenter; spacing: 12
+                                        Item {
                                             id: taskCheck
-                                            text: taskRow.task.done ? "✓" : "○"; implicitWidth: 26
-                                            onClicked: { dash.store.toggleTask(taskRow.task.id); taskCheckBounce.start(); }
+                                            Layout.preferredWidth: 28; Layout.preferredHeight: 28
+                                            Rectangle {
+                                                anchors.centerIn: parent; width: 20; height: 20; radius: 10
+                                                color: taskRow.task.done ? theme.accent : "transparent"
+                                                border.width: 1
+                                                border.color: taskRow.task.done ? theme.accent : taskRow.hovered ? theme.alpha(theme.text, 0.55) : theme.alpha(theme.text, 0.28)
+                                                Behavior on border.color { ColorAnimation { duration: Style.duration(140) } }
+                                                Label {
+                                                    anchors.centerIn: parent
+                                                    text: taskRow.task.done ? "✓" : ""
+                                                    font.pixelSize: 12
+                                                    color: theme.background
+                                                }
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: { dash.store.toggleTask(taskRow.task.id); taskCheckBounce.start(); }
+                                            }
                                             Accessible.name: taskRow.task.done ? "Reopen task" : "Complete task"
                                             NumberAnimation {
                                                 id: taskCheckBounce; target: taskCheck; property: "scale"
-                                                from: 0.82; to: 1; duration: Style.duration(190); easing.type: Easing.OutBack
+                                                from: 0.84; to: 1; duration: Style.duration(190); easing.type: Easing.OutBack
                                             }
                                         }
                                         ColumnLayout {
-                                            Layout.fillWidth: true; spacing: 3
+                                            Layout.fillWidth: true; spacing: 2
                                             TextField {
                                                 id: taskTitleField
                                                 visible: dash.editingTaskId === taskRow.task.id
@@ -474,13 +497,14 @@ PanelWindow {
                                                 onTextChanged: if (visible) dash.taskDraft = text
                                                 onAccepted: { dash.commitTask(); page.forceActiveFocus(); }
                                                 Keys.onEscapePressed: dash.editingTaskId = ""
-                                                color: theme.text; font.family: theme.font; font.pixelSize: 16
+                                                color: theme.text; font.family: theme.font; font.pixelSize: 15
                                                 padding: 2; background: null; selectionColor: theme.accent; selectedTextColor: theme.background
                                             }
                                             Label {
                                                 visible: dash.editingTaskId !== taskRow.task.id
                                                 Layout.fillWidth: true; text: taskRow.task.title
-                                                font.pixelSize: 16; wrapMode: Text.Wrap; elide: Text.ElideNone
+                                                maximumLineCount: 2; elide: Text.ElideRight
+                                                wrapMode: Text.Wrap; font.pixelSize: 15; lineHeight: 1.05
                                                 color: taskRow.task.done ? theme.muted : theme.text
                                                 font.strikeout: !!taskRow.task.done
                                                 MouseArea {
@@ -524,6 +548,7 @@ PanelWindow {
                                             }
                                         }
                                         RowLayout {
+                                            Layout.preferredWidth: 52; Layout.alignment: Qt.AlignVCenter
                                             spacing: 2; opacity: taskRow.hovered ? 1 : 0
                                             Behavior on opacity { NumberAnimation { duration: Style.duration(140) } }
                                             Glyph {
@@ -547,11 +572,14 @@ PanelWindow {
                             }
                             // The right rail is intentionally provisional. It owns
                             // task context now; graph, notes or agenda can move in.
-                            ColumnLayout {
+                            Item {
                                 visible: dash.focusedCard === "tasks"
                                 anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
-                                width: 300; spacing: 10
-                                Label { text: "Context"; font.pixelSize: 11; opacity: 0.6; font.letterSpacing: 1 }
+                                width: 360
+                                Rectangle { anchors.fill: parent; radius: 6; color: theme.alpha(theme.text, 0.04) }
+                                ColumnLayout {
+                                    anchors.fill: parent; anchors.margins: 18; spacing: 10
+                                    Label { text: "Context"; font.pixelSize: 11; opacity: 0.6; font.letterSpacing: 1 }
                                 Label {
                                     Layout.fillWidth: true
                                     text: dash.selectedTask ? dash.selectedTask.title : "Select a task"
@@ -591,16 +619,23 @@ PanelWindow {
                                     }
                                 }
                             }
-                        }
-                        ColumnLayout {
-                            Layout.fillWidth: true; spacing: 6
-                            Entry {
-                                id: taskInput; Layout.fillWidth: true; maximumLength: 500
-                                placeholderText: "＋  Add a task — try “tomorrow”"; onAccepted: dash.submitTask()
                             }
-                            Entry {
-                                id: dueInput; Layout.fillWidth: true; maximumLength: 40
-                                placeholderText: "Due date (optional) · Enter to add"; onAccepted: dash.submitTask()
+                        }
+                        Rectangle {
+                            Layout.fillWidth: true; implicitHeight: 88; radius: 6
+                            color: theme.alpha(theme.text, 0.035)
+                            ColumnLayout {
+                                anchors.fill: parent; anchors.margins: 10; spacing: 0
+                                Entry {
+                                    id: taskInput; Layout.fillWidth: true; maximumLength: 500
+                                    implicitHeight: 34; padding: 2; background: null
+                                    placeholderText: "＋  Add a task — try “tomorrow”"; onAccepted: dash.submitTask()
+                                }
+                                Entry {
+                                    id: dueInput; Layout.fillWidth: true; maximumLength: 40
+                                    implicitHeight: 30; padding: 2; background: null; font.pixelSize: 13
+                                    placeholderText: "Due date (optional) · Enter to add"; onAccepted: dash.submitTask()
+                                }
                             }
                         }
                     }
