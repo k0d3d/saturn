@@ -89,17 +89,6 @@ PanelWindow {
         dash.store.setTaskDue(dash.dueTaskId, dash.dueDraft);
         dash.dueTaskId = "";
     }
-    // Status is the rail's eyebrow. It states where the task sits without
-    // repeating the due date that already sits in the metadata line.
-    function taskStatus(task) {
-        if (!task) return "";
-        if (task.archived) return "ARCHIVED";
-        if (task.done) return "DONE";
-        if (!Dates.validDay(task.due)) return "NO DATE";
-        if (task.due < dash.store.today) return "OVERDUE";
-        if (task.due === dash.store.today) return "TODAY";
-        return "UPCOMING";
-    }
     function selectFirstTask() {
         var first = dash.taskItems.find(function(item) { return !item.group; });
         dash.selectedTaskId = first ? first.task.id : "";
@@ -641,22 +630,17 @@ PanelWindow {
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 32; spacing: 0
                                     Label {
-                                        Layout.fillWidth: true
+                                        Layout.fillWidth: true; Layout.maximumWidth: 760
                                         text: dash.selectedTask ? dash.selectedTask.title : "Select a task"
                                         font.pixelSize: 24; font.weight: Font.Medium; lineHeight: 1.2
                                         wrapMode: Text.Wrap
                                         color: dash.selectedTask && dash.selectedTask.done ? theme.muted : theme.text
                                     }
                                     RowLayout {
+                                        Layout.fillWidth: true; Layout.maximumWidth: 760
                                         Layout.topMargin: 14
                                         spacing: 10
                                         visible: !!dash.selectedTask
-                                        Label {
-                                            text: dash.taskStatus(dash.selectedTask)
-                                            font.pixelSize: 10; font.letterSpacing: 1.2; font.weight: Font.DemiBold
-                                            color: dash.selectedTask && dash.selectedTask.due && !dash.selectedTask.done && dash.selectedTask.due < dash.store.today ? theme.urgent : theme.alpha(theme.text, 0.50)
-                                        }
-                                        Label { text: "·"; font.pixelSize: 11; color: theme.alpha(theme.text, 0.28) }
                                         Label {
                                             text: Dates.dueLabel(dash.selectedTask ? dash.selectedTask.due : "", dash.store.today) || "No due date"
                                             font.pixelSize: 12
@@ -671,6 +655,10 @@ PanelWindow {
                                             text: dash.selectedTask && dash.selectedTask.createdAt ? "Added " + Qt.formatDate(new Date(dash.selectedTask.createdAt), "d MMM") : ""
                                             font.pixelSize: 12; color: theme.alpha(theme.text, 0.50)
                                         }
+                                        Label {
+                                            visible: !!dash.selectedTask && (dash.selectedTask.tags || []).length > 0
+                                            text: "·"; font.pixelSize: 11; color: theme.alpha(theme.text, 0.28)
+                                        }
                                         Repeater {
                                             model: dash.selectedTask ? (dash.selectedTask.tags || []) : []
                                             Label {
@@ -681,7 +669,8 @@ PanelWindow {
                                         }
                                     }
                                     Flickable {
-                                        Layout.fillWidth: true; Layout.fillHeight: true; Layout.topMargin: 22
+                                        Layout.fillWidth: true; Layout.fillHeight: true
+                                        Layout.maximumWidth: 760; Layout.topMargin: 22
                                         clip: true; boundsBehavior: Flickable.StopAtBounds
                                         contentWidth: width
                                         contentHeight: bodyText.implicitHeight
@@ -694,7 +683,7 @@ PanelWindow {
                                         }
                                     }
                                     RowLayout {
-                                        Layout.fillWidth: true
+                                        Layout.fillWidth: true; Layout.maximumWidth: 760
                                         spacing: 8
                                         visible: !!dash.selectedTask
                                         Tab {
