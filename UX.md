@@ -44,9 +44,12 @@ The selected card animates from its grid slot to the full workspace over
 preserving spatial memory. A card's controls never move during hover; only
 the surface and its stack are animated.
 
-The daily note is still the hub. Library notes dated to the selected day appear
-beneath it as `@Title` rows. Click a row to open it, or use its `@` button to
-insert an explicit mention into the daily note. Nothing is inserted silently.
+Controls are text-first. Filters and view switches are tabs with an animated
+underline, task actions appear only on hover, and the Focus card is driven by a
+clickable timer dial rather than a row of Start/Pause buttons. The daily note is
+still the hub: library notes dated to the selected day appear beneath it as
+`@Title` rows. Click a row to open it, or use its `@` action to insert an
+explicit mention into the daily note. Nothing is inserted silently.
 
 ## Motion
 

@@ -268,7 +268,7 @@ PanelWindow {
                 ctx.clearRect(0, 0, width, height);
                 var c = width / 2, r = Math.min(width, height) / 2 - 10;
                 ctx.lineWidth = 5;
-                ctx.strokeStyle = theme.alpha(theme.text, 0.12);
+                ctx.strokeStyle = theme.alpha(theme.text, 0.24);
                 ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.stroke();
                 var p = Math.max(0, Math.min(1, dial.progress));
                 if (p > 0) {
@@ -298,6 +298,8 @@ PanelWindow {
             onClicked: dial.toggled()
         }
         onProgressChanged: ring.requestPaint()
+        onWidthChanged: ring.requestPaint()
+        onHeightChanged: ring.requestPaint()
         Component.onCompleted: ring.requestPaint()
     }
     component Entry: TextField {
@@ -626,7 +628,7 @@ PanelWindow {
                                     Label { Layout.fillWidth: true; text: eventLink.modelData.all_day ? "All day" : dash.eventClock(eventLink.modelData.start_ms) + " – " + dash.eventClock(eventLink.modelData.end_ms); font.pixelSize: 12; opacity: 0.7 }
                                     Label { Layout.fillWidth: true; text: eventLink.modelData.calendar || ""; font.pixelSize: 11; opacity: 0.55 }
                                 }
-                                Action {
+                                Glyph {
                                     anchors.right: parent.right; anchors.top: parent.top; z: 2
                                     text: "⊟"; visible: !!eventLink.modelData.localId
                                     onClicked: dash.store.archiveEvent(eventLink.modelData.localId)
