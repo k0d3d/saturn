@@ -205,6 +205,15 @@ Item {
         t.updatedAt = Date.now();
         changed(true, true);
     }
+    function renameTask(id, title) {
+        var t = findTask(id);
+        var text = String(title || "").trim().slice(0, 500);
+        if (!t || !ready || error || !text || text === t.title) return false;
+        t.title = text;
+        t.updatedAt = Date.now();
+        changed(true, true);
+        return true;
+    }
     function archiveTask(id) {
         var t = findTask(id);
         if (!t || !ready || error || t.archived) return;
