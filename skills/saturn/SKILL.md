@@ -79,7 +79,10 @@ Library note:
 
 Daily notes are keys of `notes` (`"YYYY-MM-DD": "text"`) and appear in search
 results with ids like `daily:2026-11-23`. They cannot be pinned or archived.
-`sync.audit` records agent command names with timestamps — never note bodies.
+In the UI the daily note is a hub: library notes whose `date` matches the
+selected day appear as `@Title` rows, and the `@` button writes an explicit
+mention into the daily note. `sync.audit` records agent command names with
+timestamps — never note bodies.
 
 ## Knowledge graph
 
