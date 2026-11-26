@@ -54,9 +54,10 @@ never move during hover; only the surface and its stack are animated.
 Controls are text-first. Filters and view switches are tabs with an animated
 underline, task actions appear only on hover, and the Focus card is driven by a
 clickable timer dial rather than a row of Start/Pause buttons. The daily note is
-still the hub: library notes dated to the selected day appear beneath it as
-`@Title` rows. Click a row to open it, or use its `@` action to insert an
-explicit mention into the daily note. Nothing is inserted silently.
+still the hub: library notes dated to the selected day appear beneath it as compact
+linked pills. Click a pill to open the note. Expanded, the editor keeps 40% of
+the card and the rest becomes a board of tinted note cards; each shows its date,
+title and a short preview.
 
 ## Motion
 
@@ -134,6 +135,17 @@ list to that tag, shows a clear control, and updates the tab counts; clicking it
 again clears the filter. Below the body, `CONNECTED` lists the selected task's
 graph neighbours (tasks and notes), each clickable.
 
+## Notepad card
+
+The daily note is the writing surface. It has one line of day navigation, the
+editor, then the notes dated that day as small pills — no section heading and no
+list rows. Word count and the `Ctrl+Enter → task` hint share one quiet line.
+
+Expanded, the editor takes 40% of the card and the remaining space is a board of
+all notes in a responsive grid (up to four columns). Cards are tinted from a
+fixed six-colour palette keyed by note id, with date, title and a five-line
+preview. Clicking a pill or card opens the note in the Notes surface.
+
 ## Open design questions
 
 Card interactions are being designed one card at a time. The current grid is a
@@ -142,8 +154,6 @@ base, not a final component spec.
 - **Expanded Tasks right pane** — deliberately open beyond the selected task.
   Candidates to evaluate: related notes from the knowledge graph, a day agenda,
   or a task board. Keep the full title and body first.
-- **Notepad** — how much of the note body should stay visible versus writing
-  in a focused editor; whether day navigation should be a scrubber.
 - **Focus** — dial interaction beyond start/pause: drag to set duration, preset
   memory, session history.
 - **Events** — inline capture versus a compact agenda; how much calendar

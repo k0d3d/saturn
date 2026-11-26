@@ -1248,7 +1248,7 @@ PanelWindow {
                         ScrollView {
                             Layout.fillWidth: true
                             Layout.fillHeight: dash.focusedCard !== "notes"
-                            Layout.preferredHeight: dash.focusedCard === "notes" ? Math.round(parent.height * 0.34) : 0
+                            Layout.preferredHeight: dash.focusedCard === "notes" ? Math.round(parent.height * 0.40) : 0
                             Layout.minimumHeight: dash.focusedCard === "notes" ? 200 : 0
                             clip: true
                             TextArea {
