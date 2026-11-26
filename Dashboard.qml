@@ -32,6 +32,9 @@ PanelWindow {
     // UI-local memory only: a quiet bookmark on the last view you opened.
     // It resets when the shell restarts and never writes to the workspace.
     property string lastCard: "tasks"
+    // Empty means the five-card grid. A role means that card has expanded to
+    // the full workspace; no separate collapsed window exists.
+    property string focusedCard: ""
     property bool frosted: true
     property bool frostReady: false
     readonly property int taskAttention: Visual.attention(dash.store.tasks, dash.store.today, 0).level
@@ -97,15 +100,15 @@ PanelWindow {
                     source: frostShot; autoPaddingEnabled: false
                     blurEnabled: true; blur: 0.9; blurMax: 48; blurMultiplier: 1
                 }
-                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.18 }
+                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.12 }
             }
         }
     }
     Rectangle {
         anchors.fill: parent; z: 1
-        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.74) : theme.background
-        radius: 0; border.width: dash.compact ? 1 : 0; border.color: theme.border
-        Behavior on color { ColorAnimation { duration: 160 } }
+        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.60) : theme.background
+        radius: 0
+        Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
     function close() { store.flush(); dismissed(); }
     function moveDay(offset) {
@@ -133,32 +136,54 @@ PanelWindow {
         background: Rectangle { radius: 3; color: action.dark ? (action.selected ? theme.accent : action.hovered ? theme.border : theme.raised) : action.selected ? theme.accent : action.hovered ? theme.hover : theme.raised; opacity: action.enabled ? 1 : 0.4 }
         contentItem: Label { id: label; text: action.text; font.pixelSize: 14; font.weight: Font.Medium; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: action.dark ? (action.selected ? theme.background : theme.text) : action.selected ? theme.background : dash.textColor }
     }
-    // One card language: a leading edge for urgency, a bookmark for the last
-    // visited view, bounded stack bars for volume. Each cue has one meaning.
-    component Card: Rectangle {
+    // Borderless card: separation comes from surface contrast and spacing.
+    // Volume is exposed as physical stack layers; urgency is one dot; the
+    // expand control moves the card to the full workspace and back.
+    component Card: Item {
         id: card
         property string role: ""
         property int volume: 0
         property int attention: 0
-        property bool active: false
+        property color color: theme.surface
+        property bool focused: dash.focusedCard === card.role
         property bool bookmarked: card.role && card.role === dash.lastCard
         property bool hovered: cardHover.hovered
-        radius: 4
-        border.width: 1
-        border.color: card.active ? theme.accent : card.hovered ? theme.alpha(theme.text, 0.28) : theme.alpha(theme.text, 0.07)
-        Behavior on border.color { ColorAnimation { duration: 160 } }
-        HoverHandler { id: cardHover; cursorShape: Qt.ArrowCursor }
+        property real stackLift: card.hovered && !dash.focusedCard ? 3 : 0
+        default property alias content: body.data
+        opacity: dash.focusedCard && !card.focused ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic } }
+        Behavior on x { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
+        Behavior on y { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
+        Behavior on width { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
+        Behavior on height { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
 
-        Rectangle { anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top; anchors.topMargin: 11; width: 32; height: 4; radius: 2; color: theme.alpha(theme.text, 0.18) }
-        Rectangle {
-            anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-            width: 3; z: 2
-            color: card.attention === 2 ? theme.urgent : theme.accent
-            opacity: card.attention > 0 ? (card.hovered ? 0.95 : 0.7) : 0
-            Behavior on opacity { NumberAnimation { duration: 160 } }
+        Repeater {
+            model: 3
+            Rectangle {
+                required property int index
+                visible: index < card.volume
+                z: -1 - index
+                x: (index + 1) * 5 + card.stackLift
+                y: (index + 1) * 5 + card.stackLift
+                width: card.width; height: card.height; radius: 6
+                color: card.color
+                opacity: index === 0 ? 0.5 : index === 1 ? 0.3 : 0.16
+                Behavior on x { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
+                Behavior on y { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
+            }
         }
         Rectangle {
-            anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 12; z: 2
+            id: surface
+            anchors.fill: parent; radius: 6; color: card.color
+            Rectangle {
+                anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                height: 1; color: theme.alpha(theme.text, card.hovered || card.focused ? 0.18 : 0.08)
+            }
+        }
+        Item { id: body; anchors.fill: parent }
+        HoverHandler { id: cardHover; cursorShape: Qt.ArrowCursor }
+        Rectangle {
+            anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 14; z: 3
             width: 8; height: 8; radius: 4
             color: card.attention === 2 ? theme.urgent : theme.accent
             visible: card.attention > 0
@@ -166,23 +191,27 @@ PanelWindow {
         }
         Rectangle {
             anchors.left: parent.left; anchors.bottom: parent.bottom
-            anchors.leftMargin: 8; anchors.bottomMargin: 10; z: 2
+            anchors.leftMargin: 10; anchors.bottomMargin: 12; z: 3
             width: 3; height: 14; radius: 1.5
             color: theme.accent; opacity: 0.8
             visible: card.bookmarked
         }
-        Row {
-            anchors.right: parent.right; anchors.bottom: parent.bottom
-            anchors.rightMargin: 12; anchors.bottomMargin: 12; spacing: 3; z: 2
-            Repeater {
-                model: 3
-                Rectangle {
-                    required property int index
-                    width: 8; height: 3; radius: 1.5; color: theme.text
-                    opacity: index < card.volume ? (card.hovered ? 0.8 : 0.62) : 0.12
-                    Behavior on opacity { NumberAnimation { duration: 160 } }
-                }
+        AbstractButton {
+            id: expand
+            anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 10; z: 4
+            width: 30; height: 30
+            hoverEnabled: true; focusPolicy: Qt.NoFocus
+            opacity: card.hovered || card.focused ? 1 : 0.32
+            Behavior on opacity { NumberAnimation { duration: Style.duration(140) } }
+            onClicked: dash.focusedCard = card.focused ? "" : card.role
+            Accessible.name: card.focused ? "Return to workspace" : "Expand " + card.role
+            ToolTip.visible: hovered; ToolTip.text: card.focused ? "Back to workspace (Esc)" : "Expand"
+            contentItem: Label {
+                text: card.focused ? "×" : "⤢"
+                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                color: theme.text; font.pixelSize: 15
             }
+            background: Rectangle { radius: 3; color: expand.hovered ? theme.alpha(theme.text, 0.1) : "transparent" }
         }
     }
     component Entry: TextField {
@@ -195,7 +224,18 @@ PanelWindow {
     FocusScope {
         id: page; anchors.fill: parent; focus: true
         HoverHandler { id: workspaceHover; onHoveredChanged: { if (hovered) { dash.awaitingEntry = false; leaveTimer.stop(); } else leaveTimer.restart(); } }
-        Keys.onEscapePressed: dash.close()
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Escape) {
+                if (dash.focusedCard) { dash.focusedCard = ""; event.accepted = true; }
+                else dash.close();
+                return;
+            }
+            if (event.key === Qt.Key_0) { dash.focusedCard = ""; event.accepted = true; return; }
+            if (event.key >= Qt.Key_1 && event.key <= Qt.Key_5) {
+                var roles = ["tasks", "notes", "focus", "events", "mail"];
+                dash.focusedCard = roles[event.key - Qt.Key_1]; event.accepted = true;
+            }
+        }
         ColumnLayout {
             anchors.centerIn: parent
             width: (dash.compact ? parent.width - 30 : Math.min(2100, parent.width - 80)) / dash.uiScale
@@ -216,19 +256,26 @@ PanelWindow {
                 Action { text: "Insights"; dark: true; selected: dash.insights; onClicked: { dash.insights = true; dash.connectionsOpen = false; dash.lastCard = "insights"; } }
                 Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.connectionsOpen = true; dash.insights = false; dash.lastCard = "connections"; } }
                 Action { text: dash.frosted ? "Frost on" : "Frost off"; dark: true; selected: dash.frosted; onClicked: dash.frosted = !dash.frosted; ToolTip.visible: hovered; ToolTip.text: "Blur the desktop behind the panel" }
-                Action { visible: dash.compact; text: dash.pinned ? "Pinned" : "Pin"; dark: true; selected: dash.pinned; onClicked: { dash.pinned = !dash.pinned; if (!dash.pinned && !dash.hovered) leaveTimer.restart(); } }
-                Action { text: dash.compact ? "⤢  Full screen" : "↙  Compact"; dark: true; onClicked: dash.compact ? dash.expandRequested() : dash.close() }
-                Action { text: "×"; dark: true; onClicked: dash.close(); Accessible.name: "Close full screen" }
+                Action { text: "×"; dark: true; onClicked: dash.close(); Accessible.name: "Close workspace" }
             }
-            RowLayout {
-                id: workspaceRow
+            Item {
+                id: workspaceGrid
                 visible: !dash.insights && !dash.connectionsOpen && !dash.notesOpen
                 onVisibleChanged: if (visible) { opacity = 0; workspaceReveal.start(); }
-                Layout.fillWidth: true; Layout.fillHeight: true; spacing: 18
-                NumberAnimation { id: workspaceReveal; target: workspaceRow; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                Layout.fillWidth: true; Layout.fillHeight: true
+                readonly property var slots: Visual.grid(width, height)
+                function sx(role) { return dash.focusedCard === role ? 0 : slots.cards[role].x }
+                function sy(role) { return dash.focusedCard === role ? 0 : slots.cards[role].y }
+                function sw(role) { return dash.focusedCard === role ? width : slots.cards[role].width }
+                function sh(role) { return dash.focusedCard === role ? height : slots.cards[role].height }
+                NumberAnimation { id: workspaceReveal; target: workspaceGrid; property: "opacity"; from: 0; to: 1; duration: Style.duration(180); easing.type: Easing.OutCubic }
                 Card {
                     role: "tasks"; volume: Visual.volume(dash.taskRows.length); attention: dash.taskAttention
-                    color: theme.tasks; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 420
+                    color: theme.tasks
+                    x: workspaceGrid.sx("tasks"); y: workspaceGrid.sy("tasks")
+                    width: workspaceGrid.sw("tasks"); height: workspaceGrid.sh("tasks")
+                    z: dash.focusedCard === "tasks" ? 10 : 0
+                    enabled: !dash.focusedCard || dash.focusedCard === "tasks"
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 12
                         RowLayout {
@@ -322,7 +369,11 @@ PanelWindow {
                 }
                 Card {
                     role: "focus"
-                    color: theme.focus; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 260
+                    color: theme.focus
+                    x: workspaceGrid.sx("focus"); y: workspaceGrid.sy("focus")
+                    width: workspaceGrid.sw("focus"); height: workspaceGrid.sh("focus")
+                    z: dash.focusedCard === "focus" ? 10 : 0
+                    enabled: !dash.focusedCard || dash.focusedCard === "focus"
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: dash.compact ? 9 : 20
                         Label { text: "Focus"; font.pixelSize: 22; font.weight: Font.DemiBold }
@@ -352,7 +403,11 @@ PanelWindow {
                 }
                 Card {
                     role: "notes"; volume: Visual.volume(dash.dayNotes.length)
-                    color: theme.notes; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 330
+                    color: theme.notes
+                    x: workspaceGrid.sx("notes"); y: workspaceGrid.sy("notes")
+                    width: workspaceGrid.sw("notes"); height: workspaceGrid.sh("notes")
+                    z: dash.focusedCard === "notes" ? 10 : 0
+                    enabled: !dash.focusedCard || dash.focusedCard === "notes"
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 16
                         Label { text: "Notepad"; font.pixelSize: 22; font.weight: Font.DemiBold }
@@ -399,11 +454,12 @@ PanelWindow {
                                 id: hubRow
                                 required property var modelData
                                 width: ListView.view.width; height: 44
-                                Rectangle { anchors.fill: parent; radius: 3; color: hubArea.hovered ? theme.hover : theme.raised; opacity: hubArea.hovered ? 0.85 : 0.45 }
+                                Rectangle { anchors.fill: parent; radius: 3; color: hubArea.containsMouse ? theme.hover : theme.raised; opacity: hubArea.containsMouse ? 0.85 : 0.45 }
                                 RowLayout {
                                     anchors.fill: parent; anchors.margins: 8; spacing: 8
                                     Label { Layout.fillWidth: true; text: "@" + hubRow.modelData.title; font.pixelSize: 13; color: theme.text; elide: Text.ElideRight }
                                     AbstractButton {
+                                        id: hubLink
                                         z: 2; Layout.preferredWidth: 30; Layout.preferredHeight: 28
                                         hoverEnabled: true; focusPolicy: Qt.NoFocus
                                         Accessible.name: "Link " + hubRow.modelData.title + " in the daily note"
@@ -413,7 +469,7 @@ PanelWindow {
                                             dash.store.setNote(notes.text);
                                         }
                                         contentItem: Label { text: "@"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: theme.accent; font.pixelSize: 14 }
-                                        background: Rectangle { radius: 3; color: parent.hovered ? theme.accent : "transparent" }
+                                        background: Rectangle { radius: 3; color: hubLink.hovered ? theme.accent : "transparent" }
                                     }
                                 }
                                 MouseArea {
@@ -429,7 +485,11 @@ PanelWindow {
                 }
                 Card {
                     role: "events"; volume: Visual.volume(dash.calendarDay ? dash.calendarDay.events.length : 0)
-                    color: theme.events; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 350
+                    color: theme.events
+                    x: workspaceGrid.sx("events"); y: workspaceGrid.sy("events")
+                    width: workspaceGrid.sw("events"); height: workspaceGrid.sh("events")
+                    z: dash.focusedCard === "events" ? 10 : 0
+                    enabled: !dash.focusedCard || dash.focusedCard === "events"
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 16
                         Label { text: "Events"; font.pixelSize: 22; font.weight: Font.DemiBold }
@@ -490,7 +550,11 @@ PanelWindow {
                 Card {
                     role: "mail"; volume: Visual.volume(dash.store.newMail.length)
                     attention: dash.store.newMail.length ? 1 : 0
-                    color: theme.mail; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 340
+                    color: theme.mail
+                    x: workspaceGrid.sx("mail"); y: workspaceGrid.sy("mail")
+                    width: workspaceGrid.sw("mail"); height: workspaceGrid.sh("mail")
+                    z: dash.focusedCard === "mail" ? 10 : 0
+                    enabled: !dash.focusedCard || dash.focusedCard === "mail"
                     HeyMail { anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; store: dash.store }
                 }
             }

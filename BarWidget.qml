@@ -14,15 +14,15 @@ BarWidget {
     // Replacement bars expose a service-less facade. Use the plugin's IPC
     // interface there, keeping all window decisions in the live service.
     property var remoteState: ({})
-    readonly property bool opened: panel ? panel.expanded || panel.dashboardOpen || panel.commandOpen : !!remoteState.opened
+    readonly property bool opened: panel ? panel.dashboardOpen || panel.commandOpen : !!remoteState.opened
     readonly property bool focusRunning: service ? service.focusState.running : !!remoteState.running
     function remoteAction(action) {
         Quickshell.execDetached(["omarchy-shell", "saturn", "barAction", screenName, action]);
         refreshAfterAction.restart();
     }
     function refreshState() { if (!service && !stateProcess.running) stateProcess.running = true; }
-    function open() { if (panel) { panel.pinned = true; panel.open(); } else remoteAction("open"); }
-    function close() { if (panel) { panel.commandOpen = false; panel.dashboardOpen = false; panel.close(); } else remoteAction("close"); }
+    function open() { if (panel) panel.openDashboard(); else remoteAction("open"); }
+    function close() { if (panel) panel.close(); else remoteAction("close"); }
     Component.onCompleted: refreshState()
     onScreenNameChanged: refreshState()
     Process {
@@ -43,31 +43,10 @@ BarWidget {
         iconComponent: Component { Image { source: Qt.resolvedUrl("assets/saturn.svg"); fillMode: Image.PreserveAspectFit } }
         active: root.opened || root.focusRunning
         interactive: true
-        tooltipText: (root.focusRunning ? "Saturn · " + (root.service ? root.service.timerText : root.remoteState.timer) : "Saturn · Tasks, focus, notes and calendar") + "\nClick to pin · right-click for full screen"
-        onTooltipHoveredChanged: {
-            if (tooltipHovered && !root.opened) hoverTimer.restart();
-            else hoverTimer.stop();
-        }
+        tooltipText: (root.focusRunning ? "Saturn · " + (root.service ? root.service.timerText : root.remoteState.timer) : "Saturn · Tasks, focus, notes and calendar") + "\nClick for the full workspace"
         onPressed: function(mouseButton) {
-            hoverTimer.stop();
-            if (!root.panel) {
-                if (mouseButton === Qt.RightButton) root.remoteAction("dashboard");
-                else if (mouseButton === Qt.LeftButton) root.remoteAction("click");
-                return;
-            }
-            if (mouseButton === Qt.RightButton) root.panel.openDashboard();
-            else if (mouseButton === Qt.LeftButton) {
-                if (root.opened && root.panel.pinned) root.close();
-                else root.open();
-            }
-        }
-    }
-    Timer {
-        id: hoverTimer; interval: 240
-        onTriggered: if (button.tooltipHovered && !root.opened) {
-            button.hideOwnTooltip();
-            if (root.panel) root.panel.open();
-            else root.remoteAction("hover");
+            if (mouseButton !== Qt.LeftButton && mouseButton !== Qt.RightButton) return;
+            if (root.opened) root.close(); else root.open();
         }
     }
     onOpenedChanged: if (opened) button.hideOwnTooltip()

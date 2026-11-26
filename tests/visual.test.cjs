@@ -6,6 +6,22 @@ const context = vm.createContext({});
 vm.runInContext(fs.readFileSync("Visual.js", "utf8"), context);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
+test("workspace rectangles fit and never overlap at desktop and narrow widths", () => {
+  for (const width of [720, 1100, 1800, 2500]) {
+    const layout = context.grid(width, 880);
+    const boxes = Object.values(layout.cards);
+    for (const a of boxes) {
+      assert(a.x >= 0 && a.y >= 0 && a.width > 0 && a.height >= 200);
+      assert(a.x + a.width <= width + 0.01);
+      assert(a.y + a.height <= layout.height + 0.01);
+      for (const b of boxes) if (a !== b)
+        assert(a.x + a.width <= b.x || b.x + b.width <= a.x ||
+          a.y + a.height <= b.y || b.y + b.height <= a.y);
+    }
+    assert(layout.cards.tasks.height >= layout.cards.focus.height);
+  }
+});
+
 test("volume is banded and bounded", () => {
   assert.equal(context.volume(0), 0);
   assert.equal(context.volume(2), 1);

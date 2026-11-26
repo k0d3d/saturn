@@ -5,6 +5,36 @@ function clamp(value, low, high) {
     return Math.max(low, Math.min(high, number));
 }
 
+// Stable slots, independent of counts. Narrow screens keep the same grid but
+// let each card scroll internally instead of spilling past the viewport.
+function grid(width, height) {
+    var gap = 28, w = Math.max(320, width), h = Math.max(640, height);
+    function box(x, y, width, height) { return {x:x, y:y, width:width, height:height}; }
+    if (w < 1400) {
+        var half = (w - gap) / 2;
+        var r1 = Math.floor((h - 2 * gap) * 0.44);
+        var r2 = Math.floor((h - 2 * gap) * 0.28);
+        var r3 = h - r1 - r2 - 2 * gap;
+        return {height:h, cards:{
+            tasks:box(0, 0, half, r1), notes:box(half + gap, 0, half, r1),
+            focus:box(0, r1 + gap, half, r2), events:box(half + gap, r1 + gap, half, r2),
+            mail:box(0, r1 + r2 + 2 * gap, w, r3)
+        }};
+    }
+    var left = Math.floor((w - 2 * gap) * 0.35);
+    var middle = Math.floor((w - 2 * gap) * 0.35);
+    var right = w - left - middle - 2 * gap;
+    var split = h - 330 - gap;
+    var sideSplit = Math.floor((h - gap) * 0.46);
+    return {height:h, cards:{
+        tasks:box(0, 0, left, h),
+        notes:box(left + gap, 0, middle, split),
+        focus:box(left + gap, split + gap, middle, 330),
+        events:box(left + middle + 2 * gap, 0, right, sideSplit),
+        mail:box(left + middle + 2 * gap, sideSplit + gap, right, h - sideSplit - gap)
+    }};
+}
+
 // Volume bands keep decoration bounded: never one stack layer per item.
 function volume(count) {
     var total = clamp(count, 0, 100000);

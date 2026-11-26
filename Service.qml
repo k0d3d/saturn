@@ -138,7 +138,7 @@ Item {
             if(view === "notes") w.workspacePanel.notesOpen=true;
             else if(view === "connections") w.workspacePanel.connectionsOpen=true;
             else if(view === "insights") w.workspacePanel.insights=true;
-            w.commandOpen=false; w.dashboardOpen=false; w.pinned=true; w.open();
+            w.commandOpen=false; w.open();
         });
     }
     readonly property var tasks: { taskRevision; return workspace.tasks.map(t => Object.assign({}, t)); }
@@ -495,27 +495,21 @@ Item {
     component Control: IpcHandler {
         function barState(screen: string): string {
             var w = root.windowForScreen(screen);
-            return JSON.stringify({opened: !!w && (w.expanded || w.dashboardOpen || w.commandOpen), running: root.focusState.running, timer: root.timerText});
+            return JSON.stringify({opened: !!w && (w.dashboardOpen || w.commandOpen), running: root.focusState.running, timer: root.timerText});
         }
         function barAction(screen: string, action: string): void {
             var w = root.windowForScreen(screen);
             if (!w) return;
-            var opened = w.expanded || w.dashboardOpen || w.commandOpen;
-            if (action === "hover") {
-                if (!opened) { w.pinned = false; w.open(); }
-            } else if (action === "dashboard") w.openDashboard();
-            else if (action === "close" || (action === "click" && opened && w.pinned)) {
-                w.commandOpen = false; w.dashboardOpen = false; w.close();
-            } else if (action === "open" || action === "click") {
-                w.pinned = true; w.open();
-            }
+            var opened = w.dashboardOpen || w.commandOpen;
+            if (action === "close" || (action === "click" && opened)) w.close();
+            else w.open();
         }
-        function open(): void { root.eachWindow(w => { w.pinned = true; w.open(); }); }
+        function open(): void { root.eachWindow(w => w.open()); }
         function close(): void { root.eachWindow(w => { w.commandOpen = false; w.dashboardOpen = false; w.close(); }); }
         function dashboard(): void { if (windows.count > 0) windows.objectAt(0).openDashboard(); }
         function toggle(): void { root.eachWindow(w => { if (w.commandOpen) w.commandOpen = false; else w.openCommand(); }); }
         function command(): void { root.eachWindow(w => w.openCommand()); }
-        function tab(name: string): void { root.eachWindow(w => { w.workspacePanel.insights = name === "Insights"; w.pinned = true; w.open(); }); }
+        function tab(name: string): void { root.eachWindow(w => { w.workspacePanel.insights = name === "Insights"; w.open(); }); }
         function tasks(command: string, first: string, second: string): string { return root.tasksCommand(command, first, second); }
         function notes(command: string, a: string, b: string, c: string, d: string): string { return root.notesCommand(command, a, b, c, d); }
         function vaultSync(mode: string): void { root.vaultSync(mode || "sync"); }
@@ -531,8 +525,8 @@ Item {
             }
             return JSON.stringify({ok: false, error: "Unknown calendar command"});
         }
-        function notesOpen(): void { root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
-        function notesSearch(query: string): void { root.notesQuery = query || ""; root.eachWindow(w => { w.pinned = true; w.open(); w.workspacePanel.notesOpen = true; }); }
+        function notesOpen(): void { root.eachWindow(w => { w.open(); w.workspacePanel.notesOpen = true; }); }
+        function notesSearch(query: string): void { root.notesQuery = query || ""; root.eachWindow(w => { w.open(); w.workspacePanel.notesOpen = true; }); }
         function data(command: string, a: string, b: string, c: string, d: string): string {
             var cmd = command || "get";
             if (cmd === "get") return JSON.stringify(root.workspace);
@@ -558,10 +552,10 @@ Item {
             return JSON.stringify({ok: false, error: "Unknown data command"});
         }
         function status(): string {
-            var panels = []; root.eachWindow(w => panels.push({screen: w.screen.name, expanded: w.expanded, dashboard: w.dashboardOpen, command: w.commandOpen, timerPopout: w.timerPopout.visible, tab: w.currentTab, hovered: w.hovered}));
+            var panels = []; root.eachWindow(w => panels.push({screen: w.screen.name, dashboard: w.dashboardOpen, command: w.commandOpen, timerPopout: w.timerPopout.visible, tab: w.currentTab}));
             return JSON.stringify({ready: root.ready, error: root.error, schema: root.workspace.version, tasks: root.tasks.length, remaining: root.remainingTasks, archived: root.tasks.filter(t => t.archived).length, mailSource: root.mailSource, calendarSource: root.calendarSource, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});
         }
-        function connections(): void { root.eachWindow(w => { w.pinned=true; w.open(); w.workspacePanel.connectionsOpen=true; }); }
+        function connections(): void { root.eachWindow(w => { w.open(); w.workspacePanel.connectionsOpen=true; }); }
         function mailStatus(): string { return JSON.stringify({provider:root.mailSource,connected: root.mail.connected, authenticated: root.mail.authenticated, newForYou: root.newMail.length, busy: root.mail.busy, error: root.mail.lastError}); }
     }
     Control { target: "saturn" }
