@@ -51,3 +51,9 @@ test("daily ids round-trip and excerpts are plain text", () => {
   assert.equal(context.isDaily("abc"), false);
   assert.equal(context.excerpt("a  b\nc", 80), "a b c");
 });
+
+test("plain strips wiki links and heading marks for previews", () => {
+  assert.equal(context.plain("## Omarchy\n- [[Allow Pinned messages on Omarchy]]\n- [[Change icon on Saturn when Focusing]]"),
+    "Omarchy - Allow Pinned messages on Omarchy - Change icon on Saturn when Focusing");
+  assert.equal(context.plain(""), "");
+});

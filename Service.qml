@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import "Logic.js" as Logic
 import "Dates.js" as Dates
 import "Notes.js" as Notes
@@ -133,7 +134,7 @@ Item {
     function showPulse(view, target) {
         if(view === "close") { eachWindow(w => { w.commandOpen=false; w.dashboardOpen=false; w.close(); }); return; }
         notesSelection = target || "";
-        eachWindow(w => {
+        eachFocusedWindow(w => {
             w.workspacePanel.connectionsOpen=false; w.workspacePanel.insights=false; w.workspacePanel.notesOpen=false;
             if(view === "notes") w.workspacePanel.notesOpen=true;
             else if(view === "connections") w.workspacePanel.connectionsOpen=true;
@@ -518,6 +519,22 @@ Item {
     function eachWindow(action) {
         for (var i = 0; i < windows.count; i++) action(windows.objectAt(i));
     }
+    // Commands without a screen argument belong to the monitor the user is on,
+    // not to every monitor at once.
+    function focusedWindow() {
+        var monitor = Hyprland.focusedMonitor;
+        if (monitor) {
+            for (var i = 0; i < windows.count; i++) {
+                var panel = windows.objectAt(i);
+                if (panel && panel.screen && panel.screen.name === monitor.name) return panel;
+            }
+        }
+        return windows.count ? windows.objectAt(0) : null;
+    }
+    function eachFocusedWindow(action) {
+        var panel = focusedWindow();
+        if (panel) action(panel);
+    }
     function windowForScreen(name) {
         for (var i = 0; i < windows.count; i++) {
             var panel = windows.objectAt(i);
@@ -537,12 +554,12 @@ Item {
             if (action === "close" || (action === "click" && opened)) w.close();
             else w.open();
         }
-        function open(): void { root.eachWindow(w => w.open()); }
+        function open(): void { root.eachFocusedWindow(w => w.open()); }
         function close(): void { root.eachWindow(w => { w.commandOpen = false; w.dashboardOpen = false; w.close(); }); }
-        function dashboard(): void { if (windows.count > 0) windows.objectAt(0).openDashboard(); }
-        function toggle(): void { root.eachWindow(w => { if (w.commandOpen) w.commandOpen = false; else w.openCommand(); }); }
-        function command(): void { root.eachWindow(w => w.openCommand()); }
-        function tab(name: string): void { root.eachWindow(w => { w.workspacePanel.insights = name === "Insights"; w.open(); }); }
+        function dashboard(): void { root.eachFocusedWindow(w => w.openDashboard()); }
+        function toggle(): void { root.eachFocusedWindow(w => { if (w.commandOpen) w.commandOpen = false; else w.openCommand(); }); }
+        function command(): void { root.eachFocusedWindow(w => w.openCommand()); }
+        function tab(name: string): void { root.eachFocusedWindow(w => { w.workspacePanel.insights = name === "Insights"; w.open(); }); }
         function tasks(command: string, first: string, second: string): string { return root.tasksCommand(command, first, second); }
         function notes(command: string, a: string, b: string, c: string, d: string): string { return root.notesCommand(command, a, b, c, d); }
         function vaultSync(mode: string): void { root.vaultSync(mode || "sync"); }
@@ -558,8 +575,8 @@ Item {
             }
             return JSON.stringify({ok: false, error: "Unknown calendar command"});
         }
-        function notesOpen(): void { root.eachWindow(w => { w.open(); w.workspacePanel.notesOpen = true; }); }
-        function notesSearch(query: string): void { root.notesQuery = query || ""; root.eachWindow(w => { w.open(); w.workspacePanel.notesOpen = true; }); }
+        function notesOpen(): void { root.eachFocusedWindow(w => { w.open(); w.workspacePanel.notesOpen = true; }); }
+        function notesSearch(query: string): void { root.notesQuery = query || ""; root.eachFocusedWindow(w => { w.open(); w.workspacePanel.notesOpen = true; }); }
         function data(command: string, a: string, b: string, c: string, d: string): string {
             var cmd = command || "get";
             if (cmd === "get") return JSON.stringify(root.workspace);
@@ -589,7 +606,7 @@ Item {
             var panels = []; root.eachWindow(w => panels.push({screen: w.screen.name, dashboard: w.dashboardOpen, command: w.commandOpen, timerPopout: w.timerPopout.visible, tab: w.currentTab}));
             return JSON.stringify({ready: root.ready, error: root.error, schema: root.workspace.version, tasks: root.tasks.length, remaining: root.remainingTasks, archived: root.tasks.filter(t => t.archived).length, mailSource: root.mailSource, calendarSource: root.calendarSource, running: root.focusState.running, timer: root.timerText, agendaEvents: root.agenda.length, calendarDays: root.agendaDays.length, windows: panels});
         }
-        function connections(): void { root.eachWindow(w => { w.open(); w.workspacePanel.connectionsOpen=true; }); }
+        function connections(): void { root.eachFocusedWindow(w => { w.open(); w.workspacePanel.connectionsOpen=true; }); }
         function mailStatus(): string { return JSON.stringify({provider:root.mailSource,connected: root.mail.connected, authenticated: root.mail.authenticated, newForYou: root.newMail.length, busy: root.mail.busy, error: root.mail.lastError}); }
     }
     Control { target: "saturn" }

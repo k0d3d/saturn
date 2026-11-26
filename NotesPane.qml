@@ -220,7 +220,7 @@ Item {
                         }
                         Copy {
                             Layout.fillHeight: true
-                            text: Notes.excerpt(card.modelData.body, 260) || "No text yet."
+                            text: Notes.excerpt(Notes.plain(card.modelData.body), 260) || "No text yet."
                             color: theme.muted; font.pixelSize: 12; lineHeight: 1.45
                             maximumLineCount: 5; elide: Text.ElideRight
                         }

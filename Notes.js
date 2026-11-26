@@ -43,6 +43,13 @@ function excerpt(body, length) {
     var text = String(body || "").replace(/\s+/g, " ").trim();
     return text.length > (length || 90) ? text.slice(0, length || 90) + "…" : text;
 }
+function plain(body) {
+    return String(body || "")
+        .replace(/\[\[([^\[\]]+)\]\]/g, "$1")
+        .replace(/^#+\s*/gm, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
 function matches(note, query) {
     if (!query) return true;
     var terms = String(query).toLowerCase().split(/\s+/).filter(Boolean);
