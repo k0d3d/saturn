@@ -76,6 +76,9 @@ open, not a live view. It keeps input latency predictable.
 - One blur effect, active only while the workspace is visible.
 - No per-frame JavaScript, no perpetual animations, and at most three stack
   layers per card.
+- The notes library and Connections pane are created on first open and then
+  hidden, so they never delay the initial workspace paint. Mail loads on first
+  expansion; the collapsed card shows a cheap summary.
 - Volume and attention are recalculated from existing arrays on store changes.
 - Long lists remain `ListView`-based and virtualised.
 - Measure open, expand/collapse, scroll and typing with frost on and off at the

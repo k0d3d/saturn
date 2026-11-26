@@ -25,9 +25,13 @@ PanelWindow {
     property string taskView: "Today"
     property bool insights: false
     property bool notesOpen: false
-    onNotesOpenChanged: if (notesOpen) { connectionsOpen=false; insights=false; }
+    property bool notesLoaded: false
+    onNotesOpenChanged: if (notesOpen) { connectionsOpen=false; insights=false; notesLoaded=true; }
     property bool connectionsOpen: false
-    onConnectionsOpenChanged: if (connectionsOpen) { notesOpen=false; insights=false; }
+    property bool connectionsLoaded: false
+    onConnectionsOpenChanged: if (connectionsOpen) { notesOpen=false; insights=false; connectionsLoaded=true; }
+    property bool mailLoaded: false
+    onFocusedCardChanged: if (focusedCard === "mail") mailLoaded = true
     onInsightsChanged: if (insights) { notesOpen=false; connectionsOpen=false; }
     // UI-local memory only: a quiet bookmark on the last view you opened.
     // It resets when the shell restarts and never writes to the workspace.
@@ -214,6 +218,88 @@ PanelWindow {
             background: Rectangle { radius: 3; color: expand.hovered ? theme.alpha(theme.text, 0.1) : "transparent" }
         }
     }
+    // Text-first controls. No filled button chrome unless the surface itself is
+    // the target (the timer dial).
+    component Tab: AbstractButton {
+        id: tab
+        property bool selected: false
+        implicitHeight: 30
+        implicitWidth: Math.max(28, tabLabel.implicitWidth + 14)
+        hoverEnabled: true; focusPolicy: Qt.NoFocus
+        background: Item {
+            Rectangle {
+                anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+                height: 2; color: tab.selected ? theme.accent : tab.hovered ? theme.alpha(theme.text, 0.28) : "transparent"
+                Behavior on color { ColorAnimation { duration: Style.duration(140) } }
+            }
+        }
+        contentItem: Label {
+            id: tabLabel; text: tab.text; font.pixelSize: 14
+            font.weight: tab.selected ? Font.DemiBold : Font.Normal
+            color: tab.selected ? theme.text : tab.hovered ? theme.text : theme.muted
+            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+        }
+    }
+    component Glyph: AbstractButton {
+        id: glyph
+        implicitWidth: 28; implicitHeight: 28
+        hoverEnabled: true; focusPolicy: Qt.NoFocus
+        opacity: enabled ? 1 : 0.35
+        background: Rectangle { radius: 3; color: glyph.hovered ? theme.alpha(theme.text, 0.1) : "transparent" }
+        contentItem: Label {
+            text: glyph.text; font.pixelSize: 14
+            color: glyph.hovered ? theme.text : theme.muted
+            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+        }
+    }
+    component Dial: Item {
+        id: dial
+        property real progress: 0
+        property string time: "00:00"
+        property string hint: ""
+        signal toggled()
+        implicitHeight: 180
+        Canvas {
+            id: ring
+            anchors.fill: parent
+            antialiasing: true
+            onPaint: {
+                var ctx = getContext("2d");
+                ctx.clearRect(0, 0, width, height);
+                var c = width / 2, r = Math.min(width, height) / 2 - 10;
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = theme.alpha(theme.text, 0.12);
+                ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.stroke();
+                var p = Math.max(0, Math.min(1, dial.progress));
+                if (p > 0) {
+                    ctx.strokeStyle = theme.accent;
+                    ctx.lineCap = "round";
+                    ctx.beginPath();
+                    ctx.arc(c, c, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p);
+                    ctx.stroke();
+                }
+            }
+        }
+        Column {
+            anchors.centerIn: parent
+            spacing: 4
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: dial.time; font.family: "monospace"; font.pixelSize: 46; font.letterSpacing: 1
+            }
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: dial.hint; font.pixelSize: 11; color: theme.muted
+            }
+        }
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: dial.toggled()
+        }
+        onProgressChanged: ring.requestPaint()
+        Component.onCompleted: ring.requestPaint()
+    }
     component Entry: TextField {
         color: dash.textColor; font.family: theme.font; font.pixelSize: 16
         placeholderTextColor: theme.muted; padding: 12; implicitHeight: 48
@@ -251,12 +337,12 @@ PanelWindow {
                     Label { text: "A little room for your day."; color: theme.muted; font.pixelSize: 13 }
                 }
                 Item { Layout.fillWidth: true }
-                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.focusedCard = ""; dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; dash.lastCard = "tasks"; } }
-                Action { text: "Notes"; dark: true; selected: dash.notesOpen; onClicked: { dash.focusedCard = ""; store.notesSelection = ""; dash.notesOpen = true; dash.lastCard = "notes"; } }
-                Action { text: "Insights"; dark: true; selected: dash.insights; onClicked: { dash.focusedCard = ""; dash.insights = true; dash.connectionsOpen = false; dash.lastCard = "insights"; } }
-                Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.focusedCard = ""; dash.connectionsOpen = true; dash.insights = false; dash.lastCard = "connections"; } }
-                Action { text: dash.frosted ? "Frost on" : "Frost off"; dark: true; selected: dash.frosted; onClicked: dash.frosted = !dash.frosted; ToolTip.visible: hovered; ToolTip.text: "Blur the desktop behind the panel" }
-                Action { text: "×"; dark: true; onClicked: dash.close(); Accessible.name: "Close workspace" }
+                Tab { text: "Workspace"; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.focusedCard = ""; dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; dash.lastCard = "tasks"; } }
+                Tab { text: "Notes"; selected: dash.notesOpen; onClicked: { dash.focusedCard = ""; store.notesSelection = ""; dash.notesOpen = true; dash.lastCard = "notes"; } }
+                Tab { text: "Insights"; selected: dash.insights; onClicked: { dash.focusedCard = ""; dash.insights = true; dash.connectionsOpen = false; dash.lastCard = "insights"; } }
+                Tab { text: "Connections"; selected: dash.connectionsOpen; onClicked: { dash.focusedCard = ""; dash.connectionsOpen = true; dash.insights = false; dash.lastCard = "connections"; } }
+                Tab { text: dash.frosted ? "Frost" : "Frost off"; selected: dash.frosted; onClicked: dash.frosted = !dash.frosted; ToolTip.visible: hovered; ToolTip.text: "Blur the desktop behind the workspace" }
+                Glyph { text: "×"; onClicked: dash.close(); Accessible.name: "Close workspace" }
             }
             Item {
                 id: workspaceGrid
@@ -286,13 +372,12 @@ PanelWindow {
                             Label { text: Qt.formatDate(new Date(dash.store.now), "ddd, d MMM"); font.pixelSize: 12 }
                         }
                         RowLayout {
-                            Action { text: "Today " + dash.taskCount("Today"); selected: dash.taskView === "Today"; onClicked: dash.taskView = "Today" }
-                            Action { text: "Upcoming " + dash.taskCount("Upcoming"); selected: dash.taskView === "Upcoming"; onClicked: dash.taskView = "Upcoming" }
-                            Action { text: "All " + dash.taskCount("All"); selected: dash.taskView === "All"; onClicked: dash.taskView = "All" }
-                        }
-                        RowLayout {
-                            Action { text: "Completed " + dash.taskCount("Completed"); selected: dash.taskView === "Completed"; onClicked: dash.taskView = "Completed" }
-                            Action { text: "Archive " + dash.taskCount("Archive"); selected: dash.taskView === "Archive"; onClicked: dash.taskView = "Archive" }
+                            Layout.fillWidth: true; spacing: 14
+                            Tab { text: "Today " + dash.taskCount("Today"); selected: dash.taskView === "Today"; onClicked: dash.taskView = "Today" }
+                            Tab { text: "Upcoming " + dash.taskCount("Upcoming"); selected: dash.taskView === "Upcoming"; onClicked: dash.taskView = "Upcoming" }
+                            Tab { text: "All " + dash.taskCount("All"); selected: dash.taskView === "All"; onClicked: dash.taskView = "All" }
+                            Tab { text: "Done " + dash.taskCount("Completed"); selected: dash.taskView === "Completed"; onClicked: dash.taskView = "Completed" }
+                            Tab { text: "Archive " + dash.taskCount("Archive"); selected: dash.taskView === "Archive"; onClicked: dash.taskView = "Archive" }
                             Item { Layout.fillWidth: true }
                             Label { text: dash.taskRows.length + (dash.taskView === "Completed" ? " done" : " to do"); font.pixelSize: 12; opacity: 0.7 }
                         }
@@ -304,18 +389,20 @@ PanelWindow {
                                 id: taskRow
                                 required property var modelData
                                 property var task: modelData
-                                width: ListView.view.width; height: Math.max(72, taskContent.implicitHeight + 14)
+                                property bool hovered: taskHover.hovered
+                                width: ListView.view.width; height: Math.max(64, taskContent.implicitHeight + 12)
+                                HoverHandler { id: taskHover }
                                 RowLayout {
                                     id: taskContent
                                     anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 10
-                                    Action {
+                                    Glyph {
                                         id: taskCheck
-                                        text: taskRow.task.done ? "✓" : "○"; implicitWidth: 34
+                                        text: taskRow.task.done ? "✓" : "○"; implicitWidth: 26
                                         onClicked: { dash.store.toggleTask(taskRow.task.id); taskCheckBounce.start(); }
                                         Accessible.name: taskRow.task.done ? "Reopen task" : "Complete task"
                                         NumberAnimation {
                                             id: taskCheckBounce; target: taskCheck; property: "scale"
-                                            from: 0.82; to: 1; duration: 190; easing.type: Easing.OutBack
+                                            from: 0.82; to: 1; duration: Style.duration(190); easing.type: Easing.OutBack
                                         }
                                     }
                                     ColumnLayout {
@@ -340,12 +427,19 @@ PanelWindow {
                                             }
                                         }
                                     }
-                                    Action { text: "▶"; implicitWidth: 34; onClicked: dash.store.chooseFocus(taskRow.task.title, 1500); Accessible.name: "Focus on task" }
-                                    Action {
-                                        text: dash.taskView === "Archive" ? "↩" : "⊟"; implicitWidth: 34
-                                        onClicked: dash.taskView === "Archive" ? dash.store.restoreTask(taskRow.task.id) : dash.store.archiveTask(taskRow.task.id)
-                                        Accessible.name: dash.taskView === "Archive" ? "Restore task" : "Archive task"
-                                        ToolTip.visible: hovered; ToolTip.text: dash.taskView === "Archive" ? "Restore" : "Archive"
+                                    RowLayout {
+                                        spacing: 2; opacity: taskRow.hovered ? 1 : 0
+                                        Behavior on opacity { NumberAnimation { duration: Style.duration(140) } }
+                                        Glyph {
+                                            text: "▶"; onClicked: dash.store.chooseFocus(taskRow.task.title, 1500)
+                                            Accessible.name: "Focus on task"; ToolTip.visible: hovered; ToolTip.text: "Focus"
+                                        }
+                                        Glyph {
+                                            text: dash.taskView === "Archive" ? "↩" : "⊟"
+                                            onClicked: dash.taskView === "Archive" ? dash.store.restoreTask(taskRow.task.id) : dash.store.archiveTask(taskRow.task.id)
+                                            Accessible.name: dash.taskView === "Archive" ? "Restore task" : "Archive task"
+                                            ToolTip.visible: hovered; ToolTip.text: dash.taskView === "Archive" ? "Restore" : "Archive"
+                                        }
                                     }
                                 }
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: theme.alpha(theme.text, 0.14) }
@@ -356,14 +450,16 @@ PanelWindow {
                                 horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; opacity: 0.65; lineHeight: 1.5
                             }
                         }
-                        RowLayout {
-                            Entry { id: taskInput; Layout.fillWidth: true; maximumLength: 500; placeholderText: "+  Add a task (try “tomorrow”)"; onAccepted: dash.submitTask() }
-                            Action { text: "+"; onClicked: dash.submitTask(); Accessible.name: "Add task" }
-                        }
-                        RowLayout {
-                            Action { text: "Today"; onClicked: dueInput.text = dash.store.today }
-                            Action { text: "Tomorrow"; onClicked: dueInput.text = Dates.addDays(dash.store.today, 1) }
-                            Entry { id: dueInput; Layout.fillWidth: true; maximumLength: 40; placeholderText: "Due: YYYY-MM-DD or next Mon"; onAccepted: dash.submitTask() }
+                        ColumnLayout {
+                            Layout.fillWidth: true; spacing: 6
+                            Entry {
+                                id: taskInput; Layout.fillWidth: true; maximumLength: 500
+                                placeholderText: "＋  Add a task — try “tomorrow”"; onAccepted: dash.submitTask()
+                            }
+                            Entry {
+                                id: dueInput; Layout.fillWidth: true; maximumLength: 40
+                                placeholderText: "Due date (optional) · Enter to add"; onAccepted: dash.submitTask()
+                            }
                         }
                     }
                 }
@@ -378,25 +474,26 @@ PanelWindow {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 30; spacing: 10
                         Label { text: "Focus"; font.pixelSize: 22; font.weight: Font.DemiBold }
                         Label { Layout.fillWidth: true; text: dash.store.focusState.title; wrapMode: Text.Wrap; maximumLineCount: 2; font.pixelSize: 16; opacity: 0.75 }
-                        Item { Layout.fillHeight: true }
-                        Label { Layout.fillWidth: true; text: dash.store.timerText; horizontalAlignment: Text.AlignHCenter; font.family: "monospace"; font.pixelSize: Math.min(54, parent.width / 5); font.letterSpacing: 1 }
-                        Label { Layout.alignment: Qt.AlignHCenter; text: dash.store.focusState.running ? "One thing at a time." : "Ready when you are."; font.pixelSize: 12; opacity: 0.65 }
-                        RowLayout {
-                            Layout.alignment: Qt.AlignHCenter
-                            Action { objectName: "focus-toggle"; text: dash.store.focusState.running ? "Pause" : "Start"; selected: true; onClicked: dash.store.toggleTimer() }
-                            Action { text: "+5"; enabled: dash.store.focusState.duration > 0; onClicked: dash.store.addFive() }
-                        }
-                        Item { Layout.fillHeight: true }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Action { Layout.fillWidth: true; text: "25m"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 1500) }
-                            Action { Layout.fillWidth: true; text: "50m"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 3000) }
-                            Action { Layout.fillWidth: true; text: "Stopwatch"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 0) }
+                        Dial {
+                            Layout.fillWidth: true; Layout.fillHeight: true
+                            Layout.minimumHeight: 160; Layout.preferredHeight: 190
+                            progress: dash.store.focusState.duration > 0 ? dash.store.focusState.elapsed / dash.store.focusState.duration : (dash.store.focusState.running ? 0.999 : 0)
+                            time: dash.store.timerText
+                            hint: dash.store.focusState.running ? "tap to pause" : "tap to start"
+                            onToggled: dash.store.toggleTimer()
                         }
                         RowLayout {
-                            Layout.fillWidth: true
-                            Entry { id: minutesInput; Layout.fillWidth: true; implicitWidth: 65; implicitHeight: 34; placeholderText: "Minutes"; maximumLength: 3; validator: IntValidator { bottom: 1; top: 999 } }
-                            Action { text: "Set"; enabled: !dash.store.focusState.running && minutesInput.acceptableInput; onClicked: { dash.store.chooseFocus(dash.store.focusState.title, Number(minutesInput.text) * 60); page.forceActiveFocus(); } }
+                            Layout.alignment: Qt.AlignHCenter; spacing: 8
+                            Tab { text: "25m"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 1500) }
+                            Tab { text: "50m"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 3000) }
+                            Tab { text: "∞"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 0) }
+                            Tab { text: "+5m"; enabled: dash.store.focusState.duration > 0; onClicked: dash.store.addFive() }
+                        }
+                        Entry {
+                            id: minutesInput; Layout.fillWidth: true; implicitHeight: 34
+                            placeholderText: "Custom minutes · Enter"; maximumLength: 3
+                            validator: IntValidator { bottom: 1; top: 999 }
+                            onAccepted: if (acceptableInput) { dash.store.chooseFocus(dash.store.focusState.title, Number(text) * 60); page.forceActiveFocus(); }
                         }
                         Label { Layout.alignment: Qt.AlignHCenter; text: dash.store.todayMinutes + " minutes focused today"; font.pixelSize: 12; opacity: 0.65 }
                     }
@@ -413,9 +510,9 @@ PanelWindow {
                         Label { text: "Notepad"; font.pixelSize: 22; font.weight: Font.DemiBold }
                         RowLayout {
                             Label { Layout.fillWidth: true; text: dash.store.noteDay; font.pixelSize: 13; opacity: 0.7 }
-                            Action { text: "‹"; onClicked: { page.forceActiveFocus(); dash.store.moveNoteDay(-1); } }
-                            Action { text: "Today"; onClicked: { page.forceActiveFocus(); dash.store.noteDay = dash.store.today; } }
-                            Action { text: "›"; enabled: dash.store.noteDay < dash.store.today; onClicked: { page.forceActiveFocus(); dash.store.moveNoteDay(1); } }
+                            Glyph { text: "‹"; onClicked: { page.forceActiveFocus(); dash.store.moveNoteDay(-1); } }
+                            Tab { text: "Today"; onClicked: { page.forceActiveFocus(); dash.store.noteDay = dash.store.today; } }
+                            Glyph { text: "›"; enabled: dash.store.noteDay < dash.store.today; onClicked: { page.forceActiveFocus(); dash.store.moveNoteDay(1); } }
                         }
                         Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.alpha(theme.text, 0.18) }
                         ScrollView {
@@ -499,15 +596,15 @@ PanelWindow {
                                 Label { Layout.fillWidth: true; visible: !!dash.calendarDay; text: dash.calendarDay ? Qt.formatDate(new Date(dash.calendarDay.date + "T12:00:00"), "dddd") : ""; font.pixelSize: 14; font.weight: Font.DemiBold }
                                 Label { Layout.fillWidth: true; text: dash.calendarDay ? dash.calendarDay.label : "Calendar"; font.pixelSize: 13 }
                             }
-                            Action { objectName: "dashboard-previous"; text: "‹"; enabled: dash.calendarIndex > 0; onClicked: dash.moveDay(-1) }
-                            Action { objectName: "dashboard-next"; text: "›"; enabled: dash.calendarIndex < dash.store.agendaDays.length - 1; onClicked: dash.moveDay(1) }
+                            Glyph { objectName: "dashboard-previous"; text: "‹"; enabled: dash.calendarIndex > 0; onClicked: dash.moveDay(-1) }
+                            Glyph { objectName: "dashboard-next"; text: "›"; enabled: dash.calendarIndex < dash.store.agendaDays.length - 1; onClicked: dash.moveDay(1) }
                         }
-                        Action { text: "Back to today"; visible: dash.calendarDate !== dash.store.calendarToday; onClicked: dash.calendarDate = dash.store.calendarToday }
-                        RowLayout {
-                            Entry { id: eventTitle; Layout.fillWidth: true; maximumLength: 256; placeholderText: "+  Add an event"; onAccepted: dash.submitEvent() }
-                            Action { text: "+"; onClicked: dash.submitEvent(); Accessible.name: "Add event" }
+                        Tab { text: "Today"; visible: dash.calendarDate !== dash.store.calendarToday; onClicked: dash.calendarDate = dash.store.calendarToday }
+                        ColumnLayout {
+                            Layout.fillWidth: true; spacing: 6
+                            Entry { id: eventTitle; Layout.fillWidth: true; maximumLength: 256; placeholderText: "＋  Add an event"; onAccepted: dash.submitEvent() }
+                            Entry { id: eventStart; Layout.fillWidth: true; maximumLength: 32; placeholderText: "Starts (optional) · Enter to add"; onAccepted: dash.submitEvent() }
                         }
-                        Entry { id: eventStart; Layout.fillWidth: true; maximumLength: 32; placeholderText: "Starts (YYYY-MM-DDTHH:mm, optional)"; onAccepted: dash.submitEvent() }
                         ListView {
                             Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 14
                             model: dash.calendarDay ? dash.calendarDay.events : []
@@ -555,20 +652,48 @@ PanelWindow {
                     width: workspaceGrid.sw("mail"); height: workspaceGrid.sh("mail")
                     z: dash.focusedCard === "mail" ? 10 : 0
                     enabled: !dash.focusedCard || dash.focusedCard === "mail"
-                    HeyMail { anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; store: dash.store }
+                    Loader {
+                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35
+                        active: dash.mailLoaded; asynchronous: true
+                        sourceComponent: Component { HeyMail { store: dash.store } }
+                    }
+                    ColumnLayout {
+                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 8
+                        visible: !dash.mailLoaded
+                        Label { text: "Mail"; font.pixelSize: 22; font.weight: Font.DemiBold }
+                        Label { Layout.fillWidth: true; text: dash.store.newMail.length + " unread · " + dash.store.mailName; font.pixelSize: 12; opacity: 0.7 }
+                        Repeater {
+                            model: dash.store.newMail.slice(0, 3)
+                            Label {
+                                required property var modelData
+                                Layout.fillWidth: true; text: modelData.creator || modelData.title || "Message"
+                                font.pixelSize: 13; opacity: 0.8; elide: Text.ElideRight
+                            }
+                        }
+                        Item { Layout.fillHeight: true }
+                        Label { text: "Expand to read"; font.pixelSize: 12; color: theme.accent }
+                    }
                 }
             }
-            NotesPane {
-                id: notesPane; store: dash.store; visible: dash.notesOpen
-                onVisibleChanged: if (visible) { opacity = 0; notesReveal.start(); }
-                NumberAnimation { id: notesReveal; target: notesPane; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+            // Heavy panes are created on first use and then hidden when closed.
+            // They never block the initial workspace paint.
+            Loader {
+                id: notesLoader
                 Layout.fillWidth: true; Layout.fillHeight: true
+                active: dash.notesLoaded; asynchronous: true
+                visible: dash.notesOpen
+                opacity: dash.notesOpen ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic } }
+                sourceComponent: Component { NotesPane { store: dash.store } }
             }
-            ConnectionsPane {
-                id: connectionsPane; store: dash.store; visible: dash.connectionsOpen
-                onVisibleChanged: if (visible) { opacity = 0; connectionsReveal.start(); }
-                NumberAnimation { id: connectionsReveal; target: connectionsPane; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+            Loader {
+                id: connectionsLoader
                 Layout.fillWidth: true; Layout.fillHeight: true
+                active: dash.connectionsLoaded; asynchronous: true
+                visible: dash.connectionsOpen
+                opacity: dash.connectionsOpen ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic } }
+                sourceComponent: Component { ConnectionsPane { store: dash.store } }
             }
             Rectangle {
                 id: insightsPane

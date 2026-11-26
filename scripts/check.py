@@ -15,6 +15,10 @@ assert (root/'UX.md').is_file()
 dashboard = (root/'Dashboard.qml').read_text()
 assert 'import "Visual.js" as Visual' in dashboard
 assert 'import QtQuick.Effects' in dashboard
+assert 'active: dash.notesLoaded' in dashboard
+assert 'active: dash.connectionsLoaded' in dashboard
+assert 'active: dash.mailLoaded' in dashboard
+assert 'compactBoard' not in (root/'OwlWindow.qml').read_text()
 manifest = json.loads((root/'manifest.json').read_text())
 assert manifest['version'] == json.loads((root/'package.json').read_text())['version']
 for path in manifest['entryPoints'].values():
