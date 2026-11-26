@@ -255,15 +255,15 @@ PanelWindow {
                 MultiEffect {
                     anchors.fill: parent; visible: frostShot.hasContent
                     source: frostShot; autoPaddingEnabled: false
-                    blurEnabled: true; blur: 0.9; blurMax: 48; blurMultiplier: 1
+                    blurEnabled: true; blur: 0.55; blurMax: 40; blurMultiplier: 1
                 }
-                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.18 }
+                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.05 }
             }
         }
     }
     Rectangle {
         anchors.fill: parent; z: 1
-        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.66) : theme.background
+        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.48) : theme.background
         radius: 0
         Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }

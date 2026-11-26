@@ -76,6 +76,10 @@ when the workspace opens. There is no live screen capture loop. Until the
 capture lands, the workspace stays opaque, so text never flashes against an
 unprepared backdrop.
 
+The tint is deliberately light — background at 48%, a 0.05 dim and a 0.55 blur —
+so the desktop still reads through and the workspace feels like an overlay
+rather than a flat screen.
+
 Why a still instead of compositor blur: Saturn is a layer-shell panel, and the
 screencopy route works across the compositors Omarchy supports without editing
 Hyprland config. The trade-off is that the blurred desktop is a snapshot from
