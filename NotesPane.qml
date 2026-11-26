@@ -134,6 +134,8 @@ Item {
         }
     }
 
+    Rectangle { anchors.fill: parent; color: theme.background }
+
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 26; spacing: 14
 
@@ -186,10 +188,10 @@ Item {
                     width: GridView.view.cellWidth - 12
                     height: 196
                     radius: 6
-                    color: theme.alpha(pane.tintFor(card.modelData.id), 0.15)
+                    color: theme.alpha(pane.tintFor(card.modelData.id), 0.20)
                     border.width: 1
                     border.color: cardHover.hovered ? theme.alpha(pane.tintFor(card.modelData.id), 0.55)
-                                                    : theme.alpha(pane.tintFor(card.modelData.id), 0.26)
+                                                    : theme.alpha(pane.tintFor(card.modelData.id), 0.34)
                     Behavior on border.color { ColorAnimation { duration: 120 } }
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 14; spacing: 6

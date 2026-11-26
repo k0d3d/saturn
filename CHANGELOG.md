@@ -19,6 +19,8 @@
 - New Saturn brand mark generated with Recraft V3 SVG on Replicate; the shell uses a mipmapped PNG so the mark stays crisp at header size.
 - The header tagline now rotates through twenty aphorisms and attributed quotations about time, attention and work. Removed the last-viewed bookmark tick from card chrome.
 - Every card heading now carries its icon. Notepad was rebuilt around a larger daily editor, compact today's-note pills and an expanded board of tinted note cards; the old full-width linked-note rows are gone.
+- Notepad has Write / All notes / full-card Note views; wiki links render as links in the reading view and are stripped from previews.
+- Saturn now opens on the focused monitor only and dismisses itself when that monitor's workspace changes.
 
 ## 0.8.0
 

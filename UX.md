@@ -59,6 +59,13 @@ linked pills. Click a pill to open the note. Expanded, the editor keeps 40% of
 the card and the rest becomes a board of tinted note cards; each shows its date,
 title and a short preview.
 
+## Screens and workspaces
+
+Saturn opens on the monitor that has focus, not on every monitor. Opening it on
+one screen leaves the others free. It is bound to the workspace it was opened
+on: changing that monitor's active workspace dismisses it, so a full-screen
+layer never sits over a workspace you moved to.
+
 ## Motion
 
 - Expanding or collapsing a card animates its position and size over 220 ms.
@@ -141,10 +148,16 @@ The daily note is the writing surface. It has one line of day navigation, the
 editor, then the notes dated that day as small pills — no section heading and no
 list rows. Word count and the `Ctrl+Enter → task` hint share one quiet line.
 
-Expanded, the editor takes 40% of the card and the remaining space is a board of
-all notes in a responsive grid (up to four columns). Cards are tinted from a
-fixed six-colour palette keyed by note id, with date, title and a five-line
-preview. Clicking a pill or card opens the note in the Notes surface.
+Expanded, the card has three views, switched by `Write` and `All notes` tabs:
+
+- **Write** — the daily editor at 40% with today's pills and the notes board below.
+- **All notes** — the board takes the whole card.
+- **Note** — clicking any pill or card opens that note full-card, with `‹ All notes` to return.
+
+Cards are tinted from a fixed six-colour palette keyed by note id, with date,
+title and a five-line preview. Wiki links (`[[Title]]`) are graph syntax: the
+reading view renders them as links, while previews strip the brackets. Clicking
+a link opens the matching task or note.
 
 ## Open design questions
 
