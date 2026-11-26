@@ -102,11 +102,17 @@ Rows are grouped by the day they were created, newest group first, with a quiet
 uppercase date header and a count. Tasks with no creation stamp close the list
 under `Older`.
 
-Expanded Tasks splits 40/60: the single-line list on the left, the selected task
-on the right. The right pane leads with the full title, then metadata (status,
-due, added date, tags), then the full body in a scrollable reading column. The
-list truncates; the pane never does. The pane is still deliberately provisional
-and has room for graph links, related notes or an agenda later.
+Expanded Tasks is one card split into two panes, not two cards. The list side is
+40% and a shade darker; the detail side is 60% and is the card surface itself. A
+single hairline runs from the card's top edge to its bottom edge between them.
+The right pane has no border or radius of its own: the full title, metadata,
+body and connections sit directly on the card. The list truncates; the pane
+never does.
+
+A `Tags` tab turns the list pane into a tag cloud: chips sized by how often a tag
+appears. Picking one switches to `All` with that tag filtered and selects the
+first match; the filter can be cleared from the row above the list. While
+browsing Tags the detail pane explains the mode instead of showing a stale task.
 
 Minimal hairline borders (10% text alpha, accent at 50% for selection) give the
 rows and the pane edges without heavier card chrome.

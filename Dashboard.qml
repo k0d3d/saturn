@@ -102,10 +102,10 @@ PanelWindow {
     }
     // Tag cloud sizes follow frequency: the themes you use most read first.
     function tagSize(count) {
-        if (count >= 6) return 20;
-        if (count >= 4) return 17;
-        if (count >= 2) return 14;
-        return 12;
+        if (count >= 6) return 21;
+        if (count >= 4) return 18;
+        if (count >= 2) return 15;
+        return 13;
     }
     function openTag(tag) {
         if (!tag) return;
@@ -164,12 +164,15 @@ PanelWindow {
         var first = dash.taskItems.find(function(item) { return !item.group; });
         dash.selectedTaskId = first ? first.task.id : "";
     }
-    onTaskViewChanged: if (taskView !== "Tags") Qt.callLater(selectFirstTask)
+    onTaskViewChanged: {
+        if (taskView === "Tags") selectedTaskId = "";
+        else Qt.callLater(selectFirstTask);
+    }
     onSelectedTaskIdChanged: dash.refreshGraph()
     onFocusedCardChanged: {
         if (focusedCard === "mail") mailLoaded = true;
         if (focusedCard === "tasks") {
-            if (!selectedTaskId) selectFirstTask();
+            if (taskView !== "Tags" && !selectedTaskId) selectFirstTask();
             Qt.callLater(function() { taskList.positionViewAtBeginning(); });
         }
     }
@@ -583,7 +586,7 @@ PanelWindow {
                             anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
                             width: Math.round(parent.width * 0.40)
                             radius: 6
-                            color: theme.alpha(theme.background, 0.20)
+                            color: theme.alpha(theme.background, 0.15)
                             Rectangle {
                                 anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
                                 width: 6; color: parent.color
@@ -599,8 +602,8 @@ PanelWindow {
                         ColumnLayout {
                             id: taskLeft
                             anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                            width: dash.focusedCard === "tasks" ? Math.round(parent.width * 0.40) : parent.width
-                            anchors.leftMargin: 24; anchors.rightMargin: 24; anchors.topMargin: 35
+                            width: (dash.focusedCard === "tasks" ? Math.round(parent.width * 0.40) : parent.width) - 48
+                            anchors.leftMargin: 24; anchors.topMargin: 35
                             spacing: 12
                         RowLayout {
                             Label {
@@ -814,32 +817,56 @@ PanelWindow {
                                     horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; opacity: 0.65; lineHeight: 1.5
                                 }
                             }
-                            Flow {
+                            Item {
                                 visible: dash.taskView === "Tags"
                                 anchors.fill: parent
-                                spacing: 14
+                                Flow {
+                                    id: tagFlow
+                                    anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                                    spacing: 10
                                 Repeater {
                                     model: dash.tagCloud
-                                    Item {
+                                    Rectangle {
+                                        id: cloudChip
                                         required property var modelData
-                                        width: cloudLabel.implicitWidth
-                                        height: cloudLabel.implicitHeight
-                                        Label {
-                                            id: cloudLabel
-                                            text: "#" + modelData.tag + " " + modelData.count
-                                            font.pixelSize: dash.tagSize(modelData.count)
-                                            font.weight: cloudHover.containsMouse || dash.taskTag === modelData.tag ? Font.DemiBold : Font.Normal
-                                            color: cloudHover.containsMouse || dash.taskTag === modelData.tag ? theme.text : theme.alpha(theme.text, 0.68)
+                                        readonly property int cloudSize: dash.tagSize(modelData.count)
+                                        readonly property bool highlighted: cloudHover.containsMouse || dash.taskTag === modelData.tag
+                                        implicitWidth: cloudRow.implicitWidth + 26
+                                        implicitHeight: cloudSize + 18
+                                        radius: 6
+                                        color: cloudChip.highlighted ? theme.alpha(theme.accent, 0.12) : theme.alpha(theme.text, 0.04)
+                                        border.width: 1
+                                        border.color: cloudChip.highlighted ? theme.alpha(theme.accent, 0.45) : theme.alpha(theme.text, 0.10)
+                                        Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+                                        Behavior on border.color { ColorAnimation { duration: Style.duration(120) } }
+                                        RowLayout {
+                                            id: cloudRow
+                                            anchors.centerIn: parent
+                                            spacing: 8
+                                            Label {
+                                                Layout.alignment: Qt.AlignBaseline
+                                                text: "#" + cloudChip.modelData.tag
+                                                font.pixelSize: cloudChip.cloudSize
+                                                font.weight: Font.DemiBold
+                                                color: theme.alpha(theme.text, 0.85)
+                                            }
+                                            Label {
+                                                Layout.alignment: Qt.AlignBaseline
+                                                text: cloudChip.modelData.count
+                                                font.pixelSize: 11
+                                                color: theme.alpha(theme.text, 0.45)
+                                            }
                                         }
                                         MouseArea {
                                             id: cloudHover
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: dash.openTag(modelData.tag)
+                                            onClicked: dash.openTag(cloudChip.modelData.tag)
                                         }
                                     }
                                 }
+                                    }
                             }
                         }
                         Rectangle {
@@ -876,7 +903,7 @@ PanelWindow {
                             anchors.fill: parent; anchors.margins: 32; spacing: 0
                             Label {
                                 Layout.fillWidth: true; Layout.maximumWidth: 760
-                                text: dash.selectedTask ? dash.selectedTask.title : "Select a task"
+                                text: dash.selectedTask ? dash.selectedTask.title : dash.taskView === "Tags" ? "Browse by theme" : "Select a task"
                                 font.pixelSize: 24; font.weight: Font.Medium; lineHeight: 1.2
                                 wrapMode: Text.Wrap
                                 color: dash.selectedTask && dash.selectedTask.done ? theme.muted : theme.text
@@ -944,7 +971,11 @@ PanelWindow {
                                     spacing: 26
                                     Label {
                                         width: parent.width
-                                        text: dash.selectedTask && dash.selectedTask.body ? dash.selectedTask.body : "No notes on this task."
+                                        text: dash.selectedTask && dash.selectedTask.body
+                                            ? dash.selectedTask.body
+                                            : dash.taskView === "Tags"
+                                                ? "Tags link tasks, notes and daily entries. Pick one to filter the list."
+                                                : "No notes on this task."
                                         color: dash.selectedTask && dash.selectedTask.body ? theme.alpha(theme.text, 0.80) : theme.alpha(theme.text, 0.35)
                                         wrapMode: Text.Wrap; font.pixelSize: 14; lineHeight: 1.65
                                     }
