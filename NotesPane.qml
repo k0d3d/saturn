@@ -90,11 +90,23 @@ Item {
     component Btn: AbstractButton {
         id: button
         property bool selected: false
-        implicitHeight: 36
-        implicitWidth: Math.max(44, label.implicitWidth + 20)
+        implicitHeight: 30
+        implicitWidth: Math.max(28, label.implicitWidth + 14)
         hoverEnabled: true; focusPolicy: Qt.NoFocus
-        background: Rectangle { radius: 3; color: button.selected ? theme.accent : button.hovered ? theme.hover : theme.raised; opacity: button.enabled ? 1 : 0.4 }
-        contentItem: Copy { id: label; text: button.text; color: button.selected ? theme.background : theme.text; wrapMode: Text.NoWrap }
+        background: Item {
+            Rectangle {
+                anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+                height: 2; color: button.selected ? theme.accent : button.hovered ? theme.alpha(theme.text, 0.28) : "transparent"
+                Behavior on color { ColorAnimation { duration: 140 } }
+            }
+        }
+        contentItem: Text {
+            id: label; text: button.text; font.family: theme.font; font.pixelSize: 14
+            font.weight: button.selected ? Font.DemiBold : Font.Normal
+            color: button.selected || button.hovered ? theme.text : theme.muted
+            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+            textFormat: Text.PlainText
+        }
     }
     component Field: TextField {
         color: theme.text; font.family: theme.font; font.pixelSize: 15

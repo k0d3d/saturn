@@ -310,7 +310,7 @@ PanelWindow {
     }
 
     FocusScope {
-        id: page; anchors.fill: parent; focus: true
+        id: page; anchors.fill: parent; focus: true; z: 2
         HoverHandler { id: workspaceHover; onHoveredChanged: { if (hovered) { dash.awaitingEntry = false; leaveTimer.stop(); } else leaveTimer.restart(); } }
         Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Escape) {
