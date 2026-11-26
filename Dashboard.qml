@@ -386,7 +386,7 @@ PanelWindow {
     }
     component IconButton: AbstractButton {
         id: iconButton
-        property string icon: ""
+        property string iconName: ""
         property string label: ""
         property real iconSize: 15
         implicitWidth: 28; implicitHeight: 28
@@ -394,7 +394,7 @@ PanelWindow {
         opacity: enabled ? 1 : 0.35
         background: Rectangle { radius: 4; color: iconButton.hovered ? theme.alpha(theme.text, 0.1) : "transparent" }
         contentItem: Icon {
-            name: iconButton.icon; size: iconButton.iconSize
+            name: iconButton.iconName; size: iconButton.iconSize
             tint: iconButton.hovered ? theme.text : theme.alpha(theme.text, 0.62)
         }
         Accessible.name: label
@@ -733,13 +733,13 @@ PanelWindow {
                                             spacing: 0; opacity: taskRow.hovered ? 1 : 0
                                             Behavior on opacity { NumberAnimation { duration: Style.duration(120) } }
                                             IconButton {
-                                                icon: "play"; iconSize: 14
+                                                iconName: "play"; iconSize: 14
                                                 label: "Focus on task"
                                                 onClicked: dash.store.chooseFocus(taskRow.task.title, 1500)
                                                 ToolTip.visible: hovered; ToolTip.text: "Focus"
                                             }
                                             IconButton {
-                                                icon: dash.taskView === "Archive" ? "undo" : "archive"
+                                                iconName: dash.taskView === "Archive" ? "undo" : "archive"
                                                 iconSize: 14
                                                 label: dash.taskView === "Archive" ? "Restore task" : "Archive task"
                                                 onClicked: {
@@ -916,7 +916,7 @@ PanelWindow {
                                         }
                                         Item { Layout.fillWidth: true }
                                         IconButton {
-                                            icon: dash.selectedTask && dash.selectedTask.archived ? "undo" : "archive"
+                                            iconName: dash.selectedTask && dash.selectedTask.archived ? "undo" : "archive"
                                             label: "Archive selected task"
                                             onClicked: {
                                                 if (!dash.selectedTask) return;
