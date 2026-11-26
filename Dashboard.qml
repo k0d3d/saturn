@@ -92,6 +92,32 @@ PanelWindow {
     property string taskDraft: ""
     property string dueDraft: ""
     property var graphRelated: []
+    readonly property var noteTints: [
+        Qt.rgba(0.36, 0.55, 0.94, 1),
+        Qt.rgba(0.34, 0.78, 0.52, 1),
+        Qt.rgba(0.69, 0.49, 1.00, 1),
+        Qt.rgba(0.90, 0.72, 0.36, 1),
+        Qt.rgba(0.88, 0.42, 0.46, 1),
+        Qt.rgba(0.50, 0.82, 0.90, 1)
+    ]
+    readonly property var boardNotes: {
+        dash.store.revision;
+        return (dash.store.workspace.notesV2 || []).filter(function(note) { return !note.archived; }).sort(function(a, b) {
+            return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0);
+        });
+    }
+    function noteTint(id) {
+        var text = String(id || ""), hash = 0;
+        for (var i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+        return dash.noteTints[hash % dash.noteTints.length];
+    }
+    function noteDate(note) {
+        return note && note.date ? Qt.formatDate(new Date(note.date + "T12:00:00"), "d MMM") : "Undated";
+    }
+    function openNote(id) {
+        dash.notesLoaded = true;
+        dash.store.showPulse("notes", id);
+    }
     readonly property string graphScript: Qt.resolvedUrl("scripts/saturn_graph.py").toString().replace("file://", "")
     property Process graphQuery: Process {
         stdout: StdioCollector {
@@ -362,6 +388,15 @@ PanelWindow {
             }
             background: Rectangle { radius: 3; color: expand.hovered ? theme.alpha(theme.text, 0.1) : "transparent" }
         }
+    }
+    component CardHeading: RowLayout {
+        id: heading
+        property string text: ""
+        property string icon: ""
+        spacing: 9
+        Icon { name: heading.icon; size: 18; tint: theme.alpha(theme.text, 0.72) }
+        Label { text: heading.text; font.pixelSize: 22; font.weight: Font.DemiBold }
+        Item { Layout.fillWidth: true }
     }
     // Text-first controls. No filled button chrome unless the surface itself is
     // the target (the timer dial).
@@ -701,11 +736,10 @@ PanelWindow {
                             width: (dash.focusedCard === "tasks" ? Math.round(parent.width * 0.40) : parent.width) - 48
                             anchors.leftMargin: 24; anchors.topMargin: 35; anchors.bottomMargin: 24
                             spacing: 12
-                        RowLayout {
-                            Label {
-                                Layout.fillWidth: true; font.pixelSize: 22; font.weight: Font.DemiBold
-                                text: ({Today: "Today’s tasks", Upcoming: "Upcoming", All: "All tasks", Completed: "Completed", Archive: "Archive", Tags: "Tags"})[dash.taskView]
-                            }
+                        CardHeading {
+                            Layout.fillWidth: true
+                            icon: "list-todo"
+                            text: ({Today: "Today’s tasks", Upcoming: "Upcoming", All: "All tasks", Completed: "Completed", Archive: "Archive", Tags: "Tags"})[dash.taskView]
                             Label {
                                 text: dash.taskView === "Tags"
                                     ? dash.tagCloud.length + " tags"
@@ -1167,7 +1201,7 @@ PanelWindow {
                     enabled: !dash.focusedCard || dash.focusedCard === "focus"
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 30; spacing: 10
-                        Label { text: "Focus"; font.pixelSize: 22; font.weight: Font.DemiBold }
+                        CardHeading { Layout.fillWidth: true; icon: "play"; text: "Focus" }
                         Label { Layout.fillWidth: true; text: dash.store.focusState.title; wrapMode: Text.Wrap; maximumLineCount: 2; font.pixelSize: 16; opacity: 0.75 }
                         Dial {
                             Layout.fillWidth: true; Layout.fillHeight: true
@@ -1201,17 +1235,22 @@ PanelWindow {
                     z: dash.focusedCard === "notes" ? 10 : 0
                     enabled: !dash.focusedCard || dash.focusedCard === "notes"
                     ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 16
-                        Label { text: "Notepad"; font.pixelSize: 22; font.weight: Font.DemiBold }
+                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 32; spacing: 12
+                        CardHeading { Layout.fillWidth: true; icon: "notebook-pen"; text: "Notepad" }
                         RowLayout {
-                            Label { Layout.fillWidth: true; text: dash.store.noteDay; font.pixelSize: 13; opacity: 0.7 }
+                            Layout.fillWidth: true; spacing: 4
+                            Label { Layout.fillWidth: true; text: dash.store.noteDay; font.pixelSize: 12; opacity: 0.65 }
                             Glyph { text: "‹"; onClicked: { page.forceActiveFocus(); dash.store.moveNoteDay(-1); } }
                             Tab { text: "Today"; onClicked: { page.forceActiveFocus(); dash.store.noteDay = dash.store.today; } }
                             Glyph { text: "›"; enabled: dash.store.noteDay < dash.store.today; onClicked: { page.forceActiveFocus(); dash.store.moveNoteDay(1); } }
                         }
-                        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.alpha(theme.text, 0.18) }
+                        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.alpha(theme.text, 0.14) }
                         ScrollView {
-                            Layout.fillWidth: true; Layout.fillHeight: true; clip: true
+                            Layout.fillWidth: true
+                            Layout.fillHeight: dash.focusedCard !== "notes"
+                            Layout.preferredHeight: dash.focusedCard === "notes" ? Math.round(parent.height * 0.34) : 0
+                            Layout.minimumHeight: dash.focusedCard === "notes" ? 200 : 0
+                            clip: true
                             TextArea {
                                 id: notes; text: dash.store.note
                                 onTextChanged: if (activeFocus) dash.store.setNote(text)
@@ -1227,52 +1266,130 @@ PanelWindow {
                                 }
                             }
                         }
-                        // The daily note is the index. Library notes dated to this day
-                        // appear here; the @ button writes an explicit graph mention.
-                        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.alpha(theme.text, 0.18) }
-                        RowLayout {
+                        // Notes dated today stay as compact pills: a link, not a
+                        // second list competing with the editor.
+                        Flow {
                             Layout.fillWidth: true
-                            Label { Layout.fillWidth: true; text: "Today’s notes"; font.pixelSize: 13; font.weight: Font.DemiBold }
-                            Label { text: dash.dayNotes.length ? dash.dayNotes.length + " linked" : "empty"; font.pixelSize: 11; opacity: 0.65 }
-                        }
-                        ListView {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: Math.min(132, dash.dayNotes.length * 44)
-                            Layout.maximumHeight: 132
-                            clip: true; spacing: 4
-                            model: dash.dayNotes
-                            ScrollBar.vertical: ScrollBar {}
-                            delegate: Item {
-                                id: hubRow
-                                required property var modelData
-                                width: ListView.view.width; height: 44
-                                Rectangle { anchors.fill: parent; radius: 3; color: hubArea.containsMouse ? theme.hover : theme.raised; opacity: hubArea.containsMouse ? 0.85 : 0.45 }
-                                RowLayout {
-                                    anchors.fill: parent; anchors.margins: 8; spacing: 8
-                                    Label { Layout.fillWidth: true; text: "@" + hubRow.modelData.title; font.pixelSize: 13; color: theme.text; elide: Text.ElideRight }
-                                    AbstractButton {
-                                        id: hubLink
-                                        z: 2; Layout.preferredWidth: 30; Layout.preferredHeight: 28
-                                        hoverEnabled: true; focusPolicy: Qt.NoFocus
-                                        Accessible.name: "Link " + hubRow.modelData.title + " in the daily note"
-                                        ToolTip.visible: hovered; ToolTip.text: "Insert @mention in today’s note"
-                                        onClicked: {
-                                            notes.insert(notes.cursorPosition, "@" + hubRow.modelData.title + " ");
-                                            dash.store.setNote(notes.text);
+                            spacing: 6
+                            visible: dash.dayNotes.length > 0
+                            Repeater {
+                                model: dash.dayNotes
+                                Rectangle {
+                                    id: notePill
+                                    required property var modelData
+                                    implicitHeight: 26
+                                    implicitWidth: Math.min(notePillRow.implicitWidth + 16, 320)
+                                    radius: 4
+                                    color: pillHover.hovered ? theme.alpha(theme.accent, 0.16) : theme.alpha(theme.text, 0.05)
+                                    border.width: 1
+                                    border.color: pillHover.hovered ? theme.alpha(theme.accent, 0.45) : theme.alpha(theme.text, 0.10)
+                                    RowLayout {
+                                        id: notePillRow
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 8; anchors.rightMargin: 8
+                                        spacing: 6
+                                        Icon { name: "file-text"; size: 12; tint: theme.alpha(theme.text, 0.55) }
+                                        Label {
+                                            Layout.fillWidth: true
+                                            text: notePill.modelData.title
+                                            elide: Text.ElideRight; maximumLineCount: 1
+                                            font.pixelSize: 11
+                                            color: theme.alpha(theme.text, 0.82)
                                         }
-                                        contentItem: Label { text: "@"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: theme.accent; font.pixelSize: 14 }
-                                        background: Rectangle { radius: 3; color: hubLink.hovered ? theme.accent : "transparent" }
+                                    }
+                                    HoverHandler { id: pillHover }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: dash.openNote(notePill.modelData.id)
                                     }
                                 }
+                            }
+                        }
+                        Label {
+                            text: (notes.text.trim() ? notes.text.trim().split(/\s+/).length : 0) + " words · Ctrl+Enter → task"
+                            font.pixelSize: 11; color: theme.alpha(theme.text, 0.5)
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.topMargin: 4
+                            visible: dash.focusedCard === "notes"
+                            Label { Layout.fillWidth: true; text: "All notes"; font.pixelSize: 13; font.weight: Font.DemiBold }
+                            Label {
+                                text: dash.boardNotes.length + (dash.boardNotes.length === 1 ? " note" : " notes")
+                                font.pixelSize: 11; color: theme.alpha(theme.text, 0.5)
+                            }
+                        }
+                        GridView {
+                            Layout.fillWidth: true; Layout.fillHeight: true
+                            visible: dash.focusedCard === "notes"
+                            clip: true
+                            model: dash.boardNotes
+                            readonly property int columns: Math.max(1, Math.min(4, Math.floor(width / 300)))
+                            cellWidth: Math.max(220, Math.floor(width / columns))
+                            cellHeight: 190
+                            spacing: 12
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AsNeeded; width: 4
+                                background: null
+                                contentItem: Rectangle { implicitWidth: 4; radius: 2; color: theme.alpha(theme.text, 0.28) }
+                            }
+                            delegate: Rectangle {
+                                id: noteCard
+                                required property var modelData
+                                width: GridView.view.cellWidth - 12
+                                height: 178
+                                radius: 6
+                                color: theme.alpha(dash.noteTint(noteCard.modelData.id), 0.15)
+                                border.width: 1
+                                border.color: noteHover.hovered ? theme.alpha(dash.noteTint(noteCard.modelData.id), 0.55)
+                                                                : theme.alpha(dash.noteTint(noteCard.modelData.id), 0.26)
+                                Behavior on border.color { ColorAnimation { duration: Style.duration(120) } }
+                                ColumnLayout {
+                                    anchors.fill: parent; anchors.margins: 14; spacing: 8
+                                    RowLayout {
+                                        spacing: 6
+                                        Icon { name: "file-text"; size: 12; tint: theme.alpha(theme.text, 0.55) }
+                                        Label {
+                                            Layout.fillWidth: true
+                                            text: dash.noteDate(noteCard.modelData)
+                                            font.pixelSize: 11; color: theme.alpha(theme.text, 0.6)
+                                        }
+                                        Label {
+                                            visible: !!noteCard.modelData.pinned
+                                            text: "PINNED"; font.pixelSize: 9; font.letterSpacing: 1
+                                            color: theme.accent
+                                        }
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: noteCard.modelData.title
+                                        font.pixelSize: 15; font.weight: Font.DemiBold
+                                        wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true; Layout.fillHeight: true
+                                        text: noteCard.modelData.body || "No text yet."
+                                        wrapMode: Text.Wrap; maximumLineCount: 5; elide: Text.ElideRight
+                                        font.pixelSize: 12; lineHeight: 1.45
+                                        color: noteCard.modelData.body ? theme.alpha(theme.text, 0.7) : theme.alpha(theme.text, 0.35)
+                                    }
+                                }
+                                HoverHandler { id: noteHover }
                                 MouseArea {
-                                    id: hubArea; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: dash.store.showPulse("notes", hubRow.modelData.id)
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: dash.openNote(noteCard.modelData.id)
                                 }
                             }
-                            Label { anchors.centerIn: parent; width: parent.width; visible: parent.count === 0; text: "No notes dated today yet."; color: theme.muted; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
+                            Label {
+                                anchors.centerIn: parent; width: parent.width
+                                visible: parent.count === 0
+                                text: "No notes yet."
+                                horizontalAlignment: Text.AlignHCenter
+                                color: theme.alpha(theme.text, 0.4); font.pixelSize: 12
+                            }
                         }
-                        Label { text: (notes.text.trim() ? notes.text.trim().split(/\s+/).length : 0) + " words · Saved locally"; font.pixelSize: 12; opacity: 0.65 }
-                        Label { text: "Ctrl+Enter → task"; font.pixelSize: 11; opacity: 0.5 }
                     }
                 }
                 Card {
@@ -1284,7 +1401,7 @@ PanelWindow {
                     enabled: !dash.focusedCard || dash.focusedCard === "events"
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 16
-                        Label { text: "Events"; font.pixelSize: 22; font.weight: Font.DemiBold }
+                        CardHeading { Layout.fillWidth: true; icon: "calendar"; text: "Events" }
                         RowLayout {
                             ColumnLayout {
                                 Layout.fillWidth: true; spacing: 3
@@ -1355,7 +1472,7 @@ PanelWindow {
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 8
                         visible: !dash.mailLoaded
-                        Label { text: "Mail"; font.pixelSize: 22; font.weight: Font.DemiBold }
+                        CardHeading { Layout.fillWidth: true; icon: "mail"; text: "Mail" }
                         Label { Layout.fillWidth: true; text: dash.store.newMail.length + " unread · " + dash.store.mailName; font.pixelSize: 12; opacity: 0.7 }
                         Repeater {
                             model: dash.store.newMail.slice(0, 3)
