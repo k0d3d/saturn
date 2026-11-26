@@ -60,14 +60,15 @@ test("task views keep completed work visible and hide archived items", () => {
     { id: "a", title: "Today", done: false, completedAt: 0, due: today, archived: false },
     { id: "b", title: "Tomorrow", done: false, completedAt: 0, due: "2026-11-24", archived: false },
     { id: "c", title: "Undated", done: false, completedAt: 0, due: null, archived: false },
+    { id: "g", title: "Undated two", done: false, completedAt: 0, due: null, archived: false },
     { id: "d", title: "Done", done: true, completedAt: 20, due: today, archived: false },
     { id: "e", title: "Old done", done: true, completedAt: 10, due: null, archived: false },
     { id: "f", title: "Archived", done: false, completedAt: 0, due: today, archived: true },
   ];
   const ids = (view) => context.tasksInView(tasks, view, today).map((t) => t.id).join(",");
-  assert.equal(ids("Today"), "a,c");
+  assert.equal(ids("Today"), "a,c,g");
   assert.equal(ids("Upcoming"), "b");
-  assert.equal(ids("All"), "a,b,c");
+  assert.equal(ids("All"), "a,b,c,g");
   assert.equal(ids("Completed"), "d,e");
   assert.equal(ids("Archive"), "f");
 });

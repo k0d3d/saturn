@@ -130,10 +130,17 @@ function needsWrite(state, lastPersisted) {
 }
 function tasksInView(tasks, view, today) {
     var all = Array.isArray(tasks) ? tasks : [];
-    if (view === "Completed") return all.filter(t => t.done && !t.archived).sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
-    if (view === "Archive") return all.filter(t => t.archived).sort((a,b) => (b.archivedAt || 0) - (a.archivedAt || 0));
-    if (view === "Upcoming") return all.filter(t => !t.archived && !t.done && t.due && t.due > today).sort((a,b) => a.due.localeCompare(b.due));
-    if (view === "Today") return all.filter(t => !t.archived && !t.done && (!t.due || t.due <= today)).sort((a,b) => (a.due || "9999").localeCompare(b.due || "9999"));
+    // Qt's JS sort is not stable, so equal keys (every undated task) would come
+    // back in an arbitrary order. The workspace position is the tiebreaker.
+    var position = {};
+    all.forEach((t, i) => position[t.id] = i);
+    var stable = (a, b) => (position[a.id] || 0) - (position[b.id] || 0);
+    var byDue = (a, b) => (a.due || "9999").localeCompare(b.due || "9999") || stable(a, b);
+    var newest = key => (a, b) => (b[key] || 0) - (a[key] || 0) || stable(a, b);
+    if (view === "Completed") return all.filter(t => t.done && !t.archived).sort(newest("completedAt"));
+    if (view === "Archive") return all.filter(t => t.archived).sort(newest("archivedAt"));
+    if (view === "Upcoming") return all.filter(t => !t.archived && !t.done && t.due && t.due > today).sort(byDue);
+    if (view === "Today") return all.filter(t => !t.archived && !t.done && (!t.due || t.due <= today)).sort(byDue);
     return all.filter(t => !t.archived && !t.done);
 }
 function advance(s, delta, now) {
