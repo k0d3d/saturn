@@ -15,3 +15,11 @@ colorization, so the same asset follows the active Omarchy theme.
 | `link.svg` | connected task |
 | `file-text.svg` | connected note |
 | `check.svg` | completed task check |
+| `list-todo.svg` | Tasks switch tile |
+| `notebook-pen.svg` | Notepad switch tile |
+| `calendar.svg` | Events switch tile |
+| `mail.svg` | Mail switch tile |
+
+`assets/saturn.svg` is the brand mark generated with Recraft V3 SVG on Replicate;
+`assets/saturn.png` is its 512px raster for the shell header and bar, where it is
+scaled down with mipmaps.

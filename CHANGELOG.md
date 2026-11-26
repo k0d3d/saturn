@@ -14,6 +14,9 @@
 - Tasks now group by creation date with quiet headers, use a 40/60 list/detail split, and gain minimal hairline borders. The detail pane leads with the full title and body instead of truncating like the list.
 - Replaced text glyphs with theme-tinted Lucide SVG icons for focus, edit, archive and restore; the task pane now lists graph-connected tasks and notes, and tags filter the list when clicked.
 - Expanded Tasks is now a full-height two-pane split: a darker 40% list side, a borderless 60% detail side on the card itself, and one hairline divider. Added a `Tags` tab with a frequency-sized tag cloud that filters the list.
+- A focused card now takes 84% of the workspace; the remaining strip is a `SWITCH` rail of the other cards as clickable mini cards with live captions.
+- Escape is a window shortcut, so it closes the workspace even when a text field has focus.
+- New Saturn brand mark generated with Recraft V3 SVG on Replicate; the shell uses a mipmapped PNG so the mark stays crisp at header size.
 
 ## 0.8.0
 
