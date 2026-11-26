@@ -147,6 +147,18 @@ function withTag(tasks, tag) {
     if (!tag) return Array.isArray(tasks) ? tasks : [];
     return (tasks || []).filter(t => (t.tags || []).indexOf(tag) >= 0);
 }
+function tagCloud(tasks) {
+    var counts = {}, tags = [];
+    (tasks || []).forEach(function(task) {
+        if (task.archived) return;
+        (task.tags || []).forEach(function(tag) {
+            if (!counts[tag]) { counts[tag] = 0; tags.push(tag); }
+            counts[tag]++;
+        });
+    });
+    return tags.map(function(tag) { return { tag: tag, count: counts[tag] }; })
+        .sort(function(a, b) { return b.count - a.count || a.tag.localeCompare(b.tag); });
+}
 function dayLabel(key, today) {
     if (!key || key === "0") return "Older";
     if (key === today) return "Today";

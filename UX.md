@@ -111,6 +111,12 @@ and has room for graph links, related notes or an agenda later.
 Minimal hairline borders (10% text alpha, accent at 50% for selection) give the
 rows and the pane edges without heavier card chrome.
 
+Actions use Lucide stroke icons tinted to the theme: play for focus, pencil for
+edit, archive/undo for the task. Tags are interactive — clicking one filters the
+list to that tag, shows a clear control, and updates the tab counts; clicking it
+again clears the filter. Below the body, `CONNECTED` lists the selected task's
+graph neighbours (tasks and notes), each clickable.
+
 ## Open design questions
 
 Card interactions are being designed one card at a time. The current grid is a

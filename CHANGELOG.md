@@ -12,6 +12,7 @@
 - Documented the visual contract, motion rules and performance budget in `UX.md`.
 - Added `saturn data set-tags <id> "a,b"` so agents can tag tasks without editing `workspace.json`; tags become tag nodes and `tagged` edges on the next graph refresh.
 - Tasks now group by creation date with quiet headers, use a 40/60 list/detail split, and gain minimal hairline borders. The detail pane leads with the full title and body instead of truncating like the list.
+- Replaced text glyphs with theme-tinted Lucide SVG icons for focus, edit, archive and restore; the task pane now lists graph-connected tasks and notes, and tags filter the list when clicked.
 
 ## 0.8.0
 

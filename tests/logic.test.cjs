@@ -73,6 +73,18 @@ test("task views keep completed work visible and hide archived items", () => {
   assert.equal(ids("Archive"), "f");
 });
 
+test("tag cloud counts active tasks, most used first", () => {
+  const tasks = [
+    { tags: ["a", "b"] },
+    { tags: ["b"] },
+    { tags: ["b", "c"] },
+    { tags: ["a"], archived: true },
+  ];
+  const cloud = context.tagCloud(tasks);
+  assert.equal(cloud.map((t) => t.tag + ":" + t.count).join(","), "b:3,a:1,c:1");
+  assert.equal(context.tagCloud(null).length, 0);
+});
+
 test("task groups follow created date, newest first, undated last", () => {
   const today = "2026-11-26";
   const at = (day) => new Date(day + "T12:00:00Z").getTime();
