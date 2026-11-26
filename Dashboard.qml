@@ -393,9 +393,13 @@ PanelWindow {
         hoverEnabled: true; focusPolicy: Qt.NoFocus
         opacity: enabled ? 1 : 0.35
         background: Rectangle { radius: 4; color: iconButton.hovered ? theme.alpha(theme.text, 0.1) : "transparent" }
-        contentItem: Icon {
-            name: iconButton.iconName; size: iconButton.iconSize
-            tint: iconButton.hovered ? theme.text : theme.alpha(theme.text, 0.62)
+        contentItem: Item {
+            Icon {
+                anchors.centerIn: parent
+                width: iconButton.iconSize; height: iconButton.iconSize
+                name: iconButton.iconName
+                tint: iconButton.hovered ? theme.text : theme.alpha(theme.text, 0.62)
+            }
         }
         Accessible.name: label
     }
@@ -688,7 +692,7 @@ PanelWindow {
                                         }
                                         Label {
                                             visible: dash.editingTaskId !== taskRow.task.id
-                                            Layout.fillWidth: true; text: taskRow.task.title
+                                            Layout.fillWidth: true; text: taskRow.task.title || ""
                                             maximumLineCount: 1; elide: Text.ElideRight
                                             font.pixelSize: 14
                                             color: taskRow.task.done ? theme.muted : theme.text
