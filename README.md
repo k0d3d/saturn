@@ -4,7 +4,9 @@
 
 [Website & interactive preview](https://saturn.vercel.app/) · [Visual language](UX.md) · [Releases](https://github.com/k0d3d/saturn/releases) · [Report an issue](https://github.com/k0d3d/saturn/issues)
 
-Saturn runs inside Omarchy's Quickshell desktop. Hover over its bar icon for a quick look, click to pin it, or right-click for the full workspace. It follows your current theme. An application-menu launcher opens the same native workspace. This is an Omarchy Linux plugin, not an Electron wrapper or a cross-platform standalone app.
+Saturn runs inside Omarchy's Quickshell desktop. Click its bar icon for the full workspace. It follows your current theme. An application-menu launcher opens the same native workspace. This is an Omarchy Linux plugin, not an Electron wrapper or a cross-platform standalone app.
+
+Saturn is inspired by and forked from **Oma Pulse** (formerly **Oma Owl**), the original local-first Omarchy workspace by Kosta Hantzis. The workspace concept and migration path come from that project; Saturn is now maintained independently under the `k0d3d.saturn` id.
 
 ## Installation
 
@@ -44,7 +46,9 @@ Bind `saturn command` in your Hyprland bindings using a key you choose. Existing
 On this workstation, **Super+Alt+N** opens the full dashboard. Its binding is
 `o.bind("SUPER + ALT + N", "Saturn full dashboard", "saturn dashboard")`.
 
-## Formerly Oma Pulse / Oma Owl
+## Credit: Oma Pulse / Oma Owl
+
+Saturn is inspired by and forked from **Oma Pulse** (formerly **Oma Owl**), the original local-first Omarchy workspace by **Kosta Hantzis**. The card workspace, local-first storage approach and migration path began there. Saturn is now an independent project under the `k0d3d.saturn` plugin id.
 
 Version 0.8.0 renames the project to **Saturn** and the plugin id to `k0d3d.saturn`. Data and credentials migrate automatically as described above. The deprecated `omapulse` and `omaowl` commands and IPC aliases keep existing shortcuts working for one release; new shortcuts should use `saturn`. Run the desktop installer once to refresh the app-menu name and icon.
 
@@ -258,4 +262,4 @@ omarchy plugin validate .
 
 ## License and credits
 
-Publicly viewable source; no open-source license is granted at this time (`UNLICENSED`), following Oma Beats' distribution model. Barlow is used under the included SIL Open Font License. The original workspace concept was inspired by NotchOwl; Saturn is an independent project, not affiliated with Omarchy or its connected services.
+Publicly viewable source; no open-source license is granted at this time (`UNLICENSED`), following Oma Beats' distribution model. Barlow is used under the included SIL Open Font License. Saturn is inspired by and forked from Oma Pulse (formerly Oma Owl); the wider workspace concept was also inspired by NotchOwl. Saturn is an independent project, not affiliated with Omarchy or its connected services.

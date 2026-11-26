@@ -9,6 +9,7 @@ import Quickshell.Wayland
 import qs.Commons
 import "Logic.js" as Logic
 import "Dates.js" as Dates
+import "Slogans.js" as Slogans
 import "Visual.js" as Visual
 
 PanelWindow {
@@ -19,6 +20,8 @@ PanelWindow {
     signal expandRequested()
     property bool compact: false
     property bool pinned: false
+    property int sloganIndex: Math.floor(Math.random() * Slogans.lines.length)
+    readonly property string slogan: Slogans.lines[dash.sloganIndex % Slogans.lines.length]
     property bool awaitingEntry: false
     readonly property bool hovered: workspaceHover.hovered
     readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || eventTitle.activeFocus || eventStart.activeFocus || connectionsOpen || notesOpen
@@ -33,9 +36,6 @@ PanelWindow {
     onConnectionsOpenChanged: if (connectionsOpen) { notesOpen=false; insights=false; connectionsLoaded=true; }
     property bool mailLoaded: false
     onInsightsChanged: if (insights) { notesOpen=false; connectionsOpen=false; }
-    // UI-local memory only: a quiet bookmark on the last view you opened.
-    // It resets when the shell restarts and never writes to the workspace.
-    property string lastCard: "tasks"
     // Empty means the five-card grid. A role means that card has expanded to
     // the full workspace; no separate collapsed window exists.
     property string focusedCard: ""
@@ -148,7 +148,6 @@ PanelWindow {
         var id = String(node.key).split(":")[1];
         if (node.kind === "task") focusTask(id);
         else if (node.kind === "note" || node.kind === "daily") {
-            dash.lastCard = "notes";
             dash.notesLoaded = true;
             dash.notesOpen = true;
             dash.store.showPulse("notes", id);
@@ -304,7 +303,6 @@ PanelWindow {
         property int attention: 0
         property color color: theme.surface
         property bool focused: dash.focusedCard === card.role
-        property bool bookmarked: card.role && card.role === dash.lastCard
         property bool hovered: cardHover.hovered
         property real stackLift: card.hovered && !dash.focusedCard ? 3 : 0
         default property alias content: body.data
@@ -346,13 +344,6 @@ PanelWindow {
             color: card.attention === 2 ? theme.urgent : theme.accent
             visible: card.attention > 0
             opacity: card.hovered ? 1 : 0.75
-        }
-        Rectangle {
-            anchors.left: parent.left; anchors.bottom: parent.bottom
-            anchors.leftMargin: 10; anchors.bottomMargin: 12; z: 3
-            width: 3; height: 14; radius: 1.5
-            color: theme.accent; opacity: 0.8
-            visible: card.bookmarked
         }
         AbstractButton {
             id: expand
@@ -567,6 +558,10 @@ PanelWindow {
                 dash.focusedCard = roles[event.key - Qt.Key_1]; event.accepted = true;
             }
         }
+        Timer {
+            interval: 9000; running: dash.visible; repeat: true
+            onTriggered: dash.sloganIndex = (dash.sloganIndex + 1) % Slogans.lines.length
+        }
         ColumnLayout {
             anchors.centerIn: parent
             width: (dash.compact ? parent.width - 30 : Math.min(2100, parent.width - 80)) / dash.uiScale
@@ -579,13 +574,24 @@ PanelWindow {
                 ColumnLayout {
                     spacing: 3
                     Label { text: "Saturn"; color: theme.text; font.pixelSize: 27; font.weight: Font.DemiBold }
-                    Label { text: "A little room for your day."; color: theme.muted; font.pixelSize: 13 }
+                    Label {
+                        id: sloganLabel
+                        Layout.maximumWidth: 640
+                        text: dash.slogan
+                        color: theme.muted; font.pixelSize: 13
+                        elide: Text.ElideRight
+                        onTextChanged: sloganFade.restart()
+                        NumberAnimation {
+                            id: sloganFade; target: sloganLabel; property: "opacity"
+                            from: 0.35; to: 1; duration: Style.duration(320); easing.type: Easing.OutCubic
+                        }
+                    }
                 }
                 Item { Layout.fillWidth: true }
-                Tab { text: "Workspace"; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.focusedCard = ""; dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; dash.lastCard = "tasks"; } }
-                Tab { text: "Notes"; selected: dash.notesOpen; onClicked: { dash.focusedCard = ""; store.notesSelection = ""; dash.notesOpen = true; dash.lastCard = "notes"; } }
-                Tab { text: "Insights"; selected: dash.insights; onClicked: { dash.focusedCard = ""; dash.insights = true; dash.connectionsOpen = false; dash.lastCard = "insights"; } }
-                Tab { text: "Connections"; selected: dash.connectionsOpen; onClicked: { dash.focusedCard = ""; dash.connectionsOpen = true; dash.insights = false; dash.lastCard = "connections"; } }
+                Tab { text: "Workspace"; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.focusedCard = ""; dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; } }
+                Tab { text: "Notes"; selected: dash.notesOpen; onClicked: { dash.focusedCard = ""; store.notesSelection = ""; dash.notesOpen = true; } }
+                Tab { text: "Insights"; selected: dash.insights; onClicked: { dash.focusedCard = ""; dash.insights = true; dash.connectionsOpen = false; } }
+                Tab { text: "Connections"; selected: dash.connectionsOpen; onClicked: { dash.focusedCard = ""; dash.connectionsOpen = true; dash.insights = false; } }
                 Tab { text: dash.frosted ? "Frost" : "Frost off"; selected: dash.frosted; onClicked: dash.frosted = !dash.frosted; ToolTip.visible: hovered; ToolTip.text: "Blur the desktop behind the workspace" }
                 Glyph { text: "×"; onClicked: dash.close(); Accessible.name: "Close workspace" }
             }
@@ -1260,7 +1266,7 @@ PanelWindow {
                                 }
                                 MouseArea {
                                     id: hubArea; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: { dash.lastCard = "notes"; dash.store.showPulse("notes", hubRow.modelData.id); }
+                                    onClicked: dash.store.showPulse("notes", hubRow.modelData.id)
                                 }
                             }
                             Label { anchors.centerIn: parent; width: parent.width; visible: parent.count === 0; text: "No notes dated today yet."; color: theme.muted; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
