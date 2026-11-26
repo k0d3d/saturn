@@ -16,12 +16,16 @@
   "notes.archive": "Archive",
   "notes.restore": "Restore",
   "notes.openDaily": "Open in Notepad",
-  "notes.count": {"one": "%1 note", "other": "%1 notes"},
+  "notes.count": {
+    "one": "%1 note",
+    "other": "%1 notes"
+  },
   "command.placeholder": "Add a task or search notes…",
   "command.addTask": "Add task",
   "command.notes": "Notes",
   "command.tasks": "Tasks",
   "command.hint": "Enter adds a task · search finds notes and tasks",
   "command.noResults": "No matches yet",
-  "command.workspace": "Workspace"
+  "command.workspace": "Workspace",
+  "notes.all": "All notes"
 }
