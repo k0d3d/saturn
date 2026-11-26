@@ -143,6 +143,10 @@ function tasksInView(tasks, view, today) {
     if (view === "Today") return all.filter(t => !t.archived && !t.done && (!t.due || t.due <= today)).sort(byDue);
     return all.filter(t => !t.archived && !t.done);
 }
+function withTag(tasks, tag) {
+    if (!tag) return Array.isArray(tasks) ? tasks : [];
+    return (tasks || []).filter(t => (t.tags || []).indexOf(tag) >= 0);
+}
 function dayLabel(key, today) {
     if (!key || key === "0") return "Older";
     if (key === today) return "Today";

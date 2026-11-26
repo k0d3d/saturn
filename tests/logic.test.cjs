@@ -92,6 +92,18 @@ test("task groups follow created date, newest first, undated last", () => {
   assert.equal(groups[3].tasks[0].id, "c");
 });
 
+test("tag filter keeps only matching tasks", () => {
+  const tasks = [
+    { id: "a", tags: ["x"] },
+    { id: "b", tags: ["y", "x"] },
+    { id: "c" },
+  ];
+  assert.equal(context.withTag(tasks, "").length, 3);
+  assert.equal(context.withTag(tasks, "x").map((t) => t.id).join(","), "a,b");
+  assert.equal(context.withTag(tasks, "z").length, 0);
+  assert.equal(context.withTag(null, "x").length, 0);
+});
+
 test("own writes are ignored but external edits are adopted", () => {
   const state = context.fresh();
   const payload = context.serialize(state);

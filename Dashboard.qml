@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
 import "Logic.js" as Logic
@@ -48,7 +49,9 @@ PanelWindow {
     property string calendarDate: store.calendarToday
     readonly property int calendarIndex: store.agendaDays.findIndex(d => d.date === dash.calendarDate)
     readonly property var calendarDay: store.agendaDays[Math.max(0, calendarIndex)] || null
-    readonly property var taskRows: Logic.tasksInView(dash.store.tasks, dash.taskView, dash.store.today)
+    readonly property var baseRows: Logic.tasksInView(dash.store.tasks, dash.taskView, dash.store.today)
+    property string taskTag: ""
+    readonly property var taskRows: Logic.withTag(dash.baseRows, dash.taskTag)
     readonly property var taskGroups: Logic.taskGroups(dash.taskRows, dash.store.today)
     // One flat model: a date header, then the tasks created that day. Keeping
     // headers in the model avoids ListView section quirks with this delegate.
@@ -66,7 +69,61 @@ PanelWindow {
     property string dueTaskId: ""
     property string taskDraft: ""
     property string dueDraft: ""
-    function taskCount(view) { return Logic.tasksInView(dash.store.tasks, view, dash.store.today).length }
+    property var graphRelated: []
+    readonly property string graphScript: Qt.resolvedUrl("scripts/saturn_graph.py").toString().replace("file://", "")
+    property Process graphQuery: Process {
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: {
+                try {
+                    var payload = JSON.parse(text || "{}");
+                    dash.graphRelated = (payload.nodes || []).filter(function(node) {
+                        return node.kind !== "tag" && node.key !== payload.root;
+                    }).slice(0, 6);
+                } catch (error) {
+                    dash.graphRelated = [];
+                }
+            }
+        }
+    }
+    function taskCount(view) {
+        var rows = Logic.tasksInView(dash.store.tasks, view, dash.store.today);
+        return Logic.withTag(rows, dash.taskTag).length;
+    }
+    function toggleTag(tag) {
+        if (!tag) return;
+        dash.taskTag = dash.taskTag === tag ? "" : tag;
+        Qt.callLater(dash.selectFirstTask);
+    }
+    function clearTag() {
+        dash.taskTag = "";
+        Qt.callLater(dash.selectFirstTask);
+    }
+    function focusTask(id) {
+        if (!id) return;
+        dash.taskTag = "";
+        dash.selectedTaskId = id;
+        Qt.callLater(function() {
+            var index = dash.taskItems.findIndex(function(item) { return !item.group && item.task.id === id; });
+            if (index >= 0) taskList.positionViewAtIndex(index, ListView.Contain);
+        });
+    }
+    function openRelated(node) {
+        if (!node) return;
+        var id = String(node.key).split(":")[1];
+        if (node.kind === "task") focusTask(id);
+        else if (node.kind === "note" || node.kind === "daily") {
+            dash.lastCard = "notes";
+            dash.notesLoaded = true;
+            dash.notesOpen = true;
+            dash.store.showPulse("notes", id);
+        }
+    }
+    function refreshGraph() {
+        dash.graphRelated = [];
+        if (!dash.selectedTaskId) return;
+        graphQuery.exec(["python3", dash.graphScript, "neighbors", "task:" + dash.selectedTaskId, "1"]);
+    }
     function editTask(task) {
         if (!task) return;
         dash.selectedTaskId = task.id;
@@ -94,6 +151,7 @@ PanelWindow {
         dash.selectedTaskId = first ? first.task.id : "";
     }
     onTaskViewChanged: Qt.callLater(selectFirstTask)
+    onSelectedTaskIdChanged: dash.refreshGraph()
     onFocusedCardChanged: {
         if (focusedCard === "mail") mailLoaded = true;
         if (focusedCard === "tasks") {
@@ -302,6 +360,76 @@ PanelWindow {
             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
         }
     }
+    // Lucide-style strokes, tinted through MultiEffect so the icon follows the
+    // theme instead of being locked to the white baked into the SVG.
+    component Icon: Item {
+        id: iconRoot
+        property string name: ""
+        property color tint: theme.text
+        property real size: 16
+        implicitWidth: size; implicitHeight: size
+        Image {
+            id: iconSource
+            anchors.fill: parent
+            visible: false
+            source: Qt.resolvedUrl("assets/icons/" + iconRoot.name + ".svg")
+            fillMode: Image.PreserveAspectFit
+            sourceSize.width: iconRoot.size * 2; sourceSize.height: iconRoot.size * 2
+        }
+        MultiEffect {
+            anchors.fill: parent
+            source: iconSource
+            colorizationColor: iconRoot.tint
+            colorization: 1
+            brightness: 0
+        }
+    }
+    component IconButton: AbstractButton {
+        id: iconButton
+        property string icon: ""
+        property string label: ""
+        property real iconSize: 15
+        implicitWidth: 28; implicitHeight: 28
+        hoverEnabled: true; focusPolicy: Qt.NoFocus
+        opacity: enabled ? 1 : 0.35
+        background: Rectangle { radius: 4; color: iconButton.hovered ? theme.alpha(theme.text, 0.1) : "transparent" }
+        contentItem: Icon {
+            name: iconButton.icon; size: iconButton.iconSize
+            tint: iconButton.hovered ? theme.text : theme.alpha(theme.text, 0.62)
+        }
+        Accessible.name: label
+    }
+    // Icon + label pairs for the detail pane actions. Text alone was ambiguous;
+    // the icon carries the verb and the label carries the object.
+    component ActionButton: Item {
+        id: action
+        property string icon: ""
+        property string text: ""
+        signal clicked()
+        readonly property alias hovered: actionHover.hovered
+        implicitWidth: actionRow.implicitWidth + 18
+        implicitHeight: 30
+        Rectangle {
+            anchors.fill: parent; radius: 4
+            color: action.hovered ? theme.alpha(theme.text, 0.06) : "transparent"
+            Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+        }
+        Rectangle {
+            anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+            height: 2; color: action.hovered ? theme.alpha(theme.accent, 0.6) : "transparent"
+            Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+        }
+        Row {
+            id: actionRow
+            anchors.centerIn: parent; spacing: 7
+            Icon { name: action.icon; size: 14; tint: action.hovered ? theme.text : theme.alpha(theme.text, 0.72) }
+            Label { text: action.text; font.pixelSize: 13; color: action.hovered ? theme.text : theme.alpha(theme.text, 0.72) }
+        }
+        HoverHandler { id: actionHover }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: action.clicked() }
+        Accessible.name: text
+    }
+
     component Dial: Item {
         id: dial
         property real progress: 0
@@ -445,6 +573,19 @@ PanelWindow {
                             Tab { text: "All " + dash.taskCount("All"); selected: dash.taskView === "All"; onClicked: dash.taskView = "All" }
                             Tab { text: "Done " + dash.taskCount("Completed"); selected: dash.taskView === "Completed"; onClicked: dash.taskView = "Completed" }
                             Tab { text: "Archive " + dash.taskCount("Archive"); selected: dash.taskView === "Archive"; onClicked: dash.taskView = "Archive" }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            visible: dash.taskTag !== ""
+                            spacing: 6
+                            ActionButton {
+                                icon: "x"; text: "Clear #" + dash.taskTag
+                                onClicked: dash.clearTag()
+                            }
+                            Label {
+                                text: dash.taskRows.length + (dash.taskRows.length === 1 ? " task" : " tasks")
+                                font.pixelSize: 11; color: theme.alpha(theme.text, 0.5)
+                            }
                         }
                         Item {
                             Layout.fillWidth: true; Layout.fillHeight: true
@@ -591,17 +732,20 @@ PanelWindow {
                                             Layout.preferredWidth: 56; Layout.alignment: Qt.AlignVCenter
                                             spacing: 0; opacity: taskRow.hovered ? 1 : 0
                                             Behavior on opacity { NumberAnimation { duration: Style.duration(120) } }
-                                            Glyph {
-                                                text: "▶"; onClicked: dash.store.chooseFocus(taskRow.task.title, 1500)
-                                                Accessible.name: "Focus on task"; ToolTip.visible: hovered; ToolTip.text: "Focus"
+                                            IconButton {
+                                                icon: "play"; iconSize: 14
+                                                label: "Focus on task"
+                                                onClicked: dash.store.chooseFocus(taskRow.task.title, 1500)
+                                                ToolTip.visible: hovered; ToolTip.text: "Focus"
                                             }
-                                            Glyph {
-                                                text: dash.taskView === "Archive" ? "↩" : "⊟"
+                                            IconButton {
+                                                icon: dash.taskView === "Archive" ? "undo" : "archive"
+                                                iconSize: 14
+                                                label: dash.taskView === "Archive" ? "Restore task" : "Archive task"
                                                 onClicked: {
                                                     if (dash.taskView === "Archive") dash.store.restoreTask(taskRow.task.id);
                                                     else { dash.store.archiveTask(taskRow.task.id); Qt.callLater(dash.selectFirstTask); }
                                                 }
-                                                Accessible.name: dash.taskView === "Archive" ? "Restore task" : "Archive task"
                                                 ToolTip.visible: hovered; ToolTip.text: dash.taskView === "Archive" ? "Restore" : "Archive"
                                             }
                                         }
@@ -609,7 +753,7 @@ PanelWindow {
                                 }
                                 Label {
                                     anchors.centerIn: parent; width: parent.width; visible: parent.count === 0
-                                    text: dash.taskView === "Archive" ? "Archive is empty." : dash.taskView === "Completed" ? "No completed tasks yet." : "Nothing here.\nAdd a task below."
+                                    text: dash.taskTag ? "No tasks tagged #" + dash.taskTag + " in this view." : dash.taskView === "Archive" ? "Archive is empty." : dash.taskView === "Completed" ? "No completed tasks yet." : "Nothing here.\nAdd a task below."
                                     horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; opacity: 0.65; lineHeight: 1.5
                                 }
                             }
@@ -622,7 +766,7 @@ PanelWindow {
                                 anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
                                 width: Math.round(parent.width * 0.60)
                                 Rectangle {
-                                    anchors.fill: parent; radius: 10
+                                    anchors.fill: parent; radius: 6
                                     color: theme.alpha(theme.text, 0.032)
                                     border.width: 1
                                     border.color: theme.alpha(theme.text, 0.10)
@@ -664,10 +808,25 @@ PanelWindow {
                                             }
                                             Repeater {
                                                 model: dash.selectedTask ? (dash.selectedTask.tags || []) : []
-                                                Label {
+                                                Item {
                                                     required property var modelData
-                                                    text: "#" + modelData
-                                                    font.pixelSize: 12; color: theme.alpha(theme.text, 0.62)
+                                                    implicitWidth: tagLabel.implicitWidth
+                                                    implicitHeight: tagLabel.implicitHeight
+                                                    Label {
+                                                        id: tagLabel
+                                                        text: "#" + modelData
+                                                        font.pixelSize: 12
+                                                        font.underline: tagMouse.containsMouse
+                                                        font.weight: dash.taskTag === modelData ? Font.DemiBold : Font.Normal
+                                                        color: dash.taskTag === modelData ? theme.text : tagMouse.containsMouse ? theme.text : theme.alpha(theme.text, 0.62)
+                                                    }
+                                                    MouseArea {
+                                                        id: tagMouse
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: dash.toggleTag(modelData)
+                                                    }
                                                 }
                                             }
                                         }
@@ -677,39 +836,94 @@ PanelWindow {
                                         Layout.maximumWidth: 760; Layout.topMargin: 22
                                         clip: true; boundsBehavior: Flickable.StopAtBounds
                                         contentWidth: width
-                                        contentHeight: bodyText.implicitHeight
-                                        Label {
-                                            id: bodyText
-                                            width: Math.min(parent.width, 760)
-                                            text: dash.selectedTask && dash.selectedTask.body ? dash.selectedTask.body : "No notes on this task."
-                                            color: dash.selectedTask && dash.selectedTask.body ? theme.alpha(theme.text, 0.80) : theme.alpha(theme.text, 0.35)
-                                            wrapMode: Text.Wrap; font.pixelSize: 14; lineHeight: 1.65
+                                        contentHeight: detailBody.implicitHeight
+                                        Column {
+                                            id: detailBody
+                                            width: parent.width
+                                            spacing: 26
+                                            Label {
+                                                width: parent.width
+                                                text: dash.selectedTask && dash.selectedTask.body ? dash.selectedTask.body : "No notes on this task."
+                                                color: dash.selectedTask && dash.selectedTask.body ? theme.alpha(theme.text, 0.80) : theme.alpha(theme.text, 0.35)
+                                                wrapMode: Text.Wrap; font.pixelSize: 14; lineHeight: 1.65
+                                            }
+                                            Column {
+                                                width: parent.width
+                                                spacing: 2
+                                                visible: dash.graphRelated.length > 0
+                                                Label {
+                                                    text: "CONNECTED"
+                                                    font.pixelSize: 10; font.letterSpacing: 1.4; font.weight: Font.DemiBold
+                                                    color: theme.alpha(theme.text, 0.4)
+                                                    bottomPadding: 6
+                                                }
+                                                Repeater {
+                                                    model: dash.graphRelated
+                                                    Rectangle {
+                                                        id: relatedRow
+                                                        required property var modelData
+                                                        width: detailBody.width; height: 34
+                                                        radius: 4
+                                                        color: relatedMouse.containsMouse ? theme.alpha(theme.text, 0.045) : "transparent"
+                                                        RowLayout {
+                                                            anchors.fill: parent
+                                                            anchors.leftMargin: 6; anchors.rightMargin: 8
+                                                            spacing: 9
+                                                            Icon {
+                                                                name: relatedRow.modelData.kind === "task" ? "link" : "file-text"
+                                                                size: 13
+                                                                tint: theme.alpha(theme.text, 0.5)
+                                                            }
+                                                            Label {
+                                                                Layout.fillWidth: true
+                                                                text: relatedRow.modelData.title
+                                                                elide: Text.ElideRight; maximumLineCount: 1
+                                                                font.pixelSize: 13
+                                                                color: theme.alpha(theme.text, 0.75)
+                                                            }
+                                                            Label {
+                                                                text: relatedRow.modelData.direction === "in" ? "linked here" : relatedRow.modelData.relation
+                                                                font.pixelSize: 10; font.letterSpacing: 0.6
+                                                                color: theme.alpha(theme.text, 0.38)
+                                                            }
+                                                        }
+                                                        MouseArea {
+                                                            id: relatedMouse
+                                                            anchors.fill: parent
+                                                            hoverEnabled: true
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: dash.openRelated(relatedRow.modelData)
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                     RowLayout {
                                         Layout.fillWidth: true; Layout.maximumWidth: 760
-                                        spacing: 8
+                                        spacing: 4
                                         visible: !!dash.selectedTask
-                                        Tab {
-                                            text: "Focus 25m"
+                                        ActionButton {
+                                            icon: "play"; text: "Focus 25m"
                                             onClicked: {
                                                 dash.store.chooseFocus(dash.selectedTask.title, 1500);
                                                 dash.focusedCard = "focus";
                                             }
                                         }
-                                        Tab {
-                                            text: "Edit"
+                                        ActionButton {
+                                            icon: "pencil"; text: "Edit"
                                             onClicked: dash.editTask(dash.selectedTask)
                                         }
                                         Item { Layout.fillWidth: true }
-                                        Glyph {
-                                            text: dash.selectedTask && dash.selectedTask.archived ? "↩" : "⊟"
+                                        IconButton {
+                                            icon: dash.selectedTask && dash.selectedTask.archived ? "undo" : "archive"
+                                            label: "Archive selected task"
                                             onClicked: {
                                                 if (!dash.selectedTask) return;
                                                 if (dash.selectedTask.archived) dash.store.restoreTask(dash.selectedTask.id);
                                                 else { dash.store.archiveTask(dash.selectedTask.id); Qt.callLater(dash.selectFirstTask); }
                                             }
-                                            Accessible.name: "Archive selected task"
+                                            ToolTip.visible: hovered; ToolTip.text: dash.selectedTask && dash.selectedTask.archived ? "Restore" : "Archive"
                                         }
                                     }
                                 }
