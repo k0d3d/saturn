@@ -10,6 +10,7 @@
 - The daily note now acts as a hub for library notes dated to that day, with a one-click `@Title` insertion that becomes a graph mention.
 - Added an optional frosted backdrop: one screencopy captured on open, blurred once, toggleable from the top bar.
 - Documented the visual contract, motion rules and performance budget in `UX.md`.
+- Added `saturn data set-tags <id> "a,b"` so agents can tag tasks without editing `workspace.json`; tags become tag nodes and `tagged` edges on the next graph refresh.
 
 ## 0.8.0
 

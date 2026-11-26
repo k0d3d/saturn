@@ -26,7 +26,7 @@ WORKSPACE = DATA_DIR / 'workspace.json'
 LOCK = DATA_DIR / '.workspace.lock'
 BACKUPS = DATA_HOME / 'omaowl-backups'
 DAY = re.compile(r'^\d{4}-\d{2}-\d{2}$')
-WRITE_COMMANDS = {'add-task', 'complete-task', 'archive-task', 'restore-task', 'set-due',
+WRITE_COMMANDS = {'add-task', 'complete-task', 'archive-task', 'restore-task', 'set-due', 'set-tags',
                   'add-note', 'update-note', 'pin-note', 'archive-note', 'restore-note'}
 
 
@@ -179,10 +179,10 @@ def main(argv):
             state.setdefault('tasks', []).insert(0, task)
             write_state(state, command)
             output({'ok': True, 'id': task['id'], 'due': due})
-        elif command in {'complete-task', 'archive-task', 'restore-task', 'set-due', 'pin-note', 'archive-note', 'restore-note'}:
+        elif command in {'complete-task', 'archive-task', 'restore-task', 'set-due', 'set-tags', 'pin-note', 'archive-note', 'restore-note'}:
             if not args:
                 fail('An id is required')
-            collection = state.get('tasks', []) if command in {'complete-task', 'archive-task', 'restore-task', 'set-due'} else state.get('notesV2', [])
+            collection = state.get('tasks', []) if command in {'complete-task', 'archive-task', 'restore-task', 'set-due', 'set-tags'} else state.get('notesV2', [])
             item = find(collection, args[0])
             if not item:
                 fail('No such id')
@@ -200,6 +200,8 @@ def main(argv):
                     item['archivedAt'] = 0
             elif command == 'set-due':
                 item['due'] = parse_due(args[1] if len(args) > 1 else '')
+            elif command == 'set-tags':
+                item['tags'] = clean_tags(args[1] if len(args) > 1 else '')
             elif command == 'pin-note':
                 item['pinned'] = not item.get('pinned', False)
             item['updatedAt'] = stamp

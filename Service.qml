@@ -214,6 +214,25 @@ Item {
         changed(true, true);
         return true;
     }
+    // Tags are lowercased and de-duplicated so the graph gets one node per theme
+    // instead of near-duplicates that read as separate clusters.
+    function setTaskTags(id, raw) {
+        var t = findTask(id);
+        if (!t || !ready || error) return false;
+        var seen = {}, next = [];
+        var parts = String(raw || "").toLowerCase().split(/[,;#\s]+/);
+        for (var i = 0; i < parts.length; i++) {
+            var tag = parts[i].slice(0, 32);
+            if (!tag || seen[tag]) continue;
+            seen[tag] = true;
+            next.push(tag);
+            if (next.length >= 12) break;
+        }
+        t.tags = next;
+        t.updatedAt = Date.now();
+        changed(true, true);
+        return true;
+    }
     function archiveTask(id) {
         var t = findTask(id);
         if (!t || !ready || error || t.archived) return;
@@ -315,6 +334,11 @@ Item {
             return JSON.stringify({ok: true, id: first});
         }
         if (cmd === "due") { root.setTaskDue(first, second); return JSON.stringify({ok: true, id: first, due: second || null}); }
+        if (cmd === "tags") {
+            var tagged = root.setTaskTags(first, second);
+            var item = root.findTask(first);
+            return JSON.stringify({ok: tagged, id: first, tags: item ? item.tags : []});
+        }
         return JSON.stringify({ok: false, error: "Unknown task command"});
     }
     function notesCommand(command, a, b, c, d) {
@@ -540,9 +564,10 @@ Item {
             var cmd = command || "get";
             if (cmd === "get") return JSON.stringify(root.workspace);
             if (cmd === "sync-status") return JSON.stringify(root.workspace.sync || {});
-            if (cmd === "tasks" || cmd === "add-task" || cmd === "complete-task" || cmd === "archive-task" || cmd === "restore-task" || cmd === "set-due") {
+            if (cmd === "tasks" || cmd === "add-task" || cmd === "complete-task" || cmd === "archive-task" || cmd === "restore-task" || cmd === "set-due" || cmd === "set-tags") {
                 var tmap = {"tasks": a || "list", "add-task": "add", "complete-task": "complete",
-                            "archive-task": "archive", "restore-task": "restore", "set-due": "due"};
+                            "archive-task": "archive", "restore-task": "restore", "set-due": "due",
+                            "set-tags": "tags"};
                 var target = tmap[cmd] || "list";
                 var taskArgs = cmd === "tasks" ? [b, c] : [a, b];
                 var result = root.tasksCommand(target, taskArgs[0] || "", taskArgs[1] || "");

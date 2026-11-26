@@ -50,6 +50,7 @@ saturn data complete-task <id>          # toggles done/completedAt
 saturn data archive-task <id>           # hides from active views
 saturn data restore-task <id>
 saturn data set-due <id> YYYY-MM-DD      # empty value clears the date
+saturn data set-tags <id> "tag1,tag2"    # replaces the task's tags
 saturn data add-note "Title" "Body" "tag1,tag2" [YYYY-MM-DD]
 saturn data update-note <id> "Title" "Body" "tag1,tag2"
 saturn data pin-note <id>
@@ -59,7 +60,7 @@ saturn data restore-note <id>
 
 The offline script accepts the same lowercase/underscore-free names:
 `get`, `status`, `sync-status`, `tasks-list`, `notes-list`, `search`,
-`add-task`, `complete-task`, `archive-task`, `restore-task`, `set-due`,
+`add-task`, `complete-task`, `archive-task`, `restore-task`, `set-due`, `set-tags`,
 `add-note`, `update-note`, `pin-note`, `archive-note`, `restore-note`.
 
 ## Data shapes
@@ -85,6 +86,10 @@ mention into the daily note. `sync.audit` records agent command names with
 timestamps — never note bodies.
 
 ## Knowledge graph
+
+Tags are the cheapest way to give the graph structure: `set-tags` writes
+lowercased, de-duplicated tags, and the next refresh turns each into a `tag:`
+node with a `tagged` edge. Prefer a few stable tags over many one-off labels.
 
 The graph lives in `~/.local/share/saturn/graph.sqlite` and is authoritative for
 relationships. It is separate from `workspace.json`, which owns item content.
