@@ -73,6 +73,25 @@ test("task views keep completed work visible and hide archived items", () => {
   assert.equal(ids("Archive"), "f");
 });
 
+test("task groups follow created date, newest first, undated last", () => {
+  const today = "2026-11-26";
+  const at = (day) => new Date(day + "T12:00:00Z").getTime();
+  const tasks = [
+    { id: "a", createdAt: at("2026-11-24") },
+    { id: "b", createdAt: at("2026-11-26") },
+    { id: "c", createdAt: 0 },
+    { id: "d", createdAt: at("2026-11-26") },
+    { id: "e", createdAt: at("2026-11-25") },
+  ];
+  const groups = context.taskGroups(tasks, today);
+  assert.equal(groups.map((g) => g.key).join(","), "2026-11-26,2026-11-25,2026-11-24,0");
+  assert.equal(groups[0].label, "Today");
+  assert.equal(groups[1].label, "Yesterday");
+  assert.equal(groups[0].tasks.map((t) => t.id).join(","), "b,d");
+  assert.equal(groups[3].label, "Older");
+  assert.equal(groups[3].tasks[0].id, "c");
+});
+
 test("own writes are ignored but external edits are adopted", () => {
   const state = context.fresh();
   const payload = context.serialize(state);

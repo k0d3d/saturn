@@ -143,6 +143,36 @@ function tasksInView(tasks, view, today) {
     if (view === "Today") return all.filter(t => !t.archived && !t.done && (!t.due || t.due <= today)).sort(byDue);
     return all.filter(t => !t.archived && !t.done);
 }
+function dayLabel(key, today) {
+    if (!key || key === "0") return "Older";
+    if (key === today) return "Today";
+    var d = new Date(key + "T12:00:00Z");
+    var y = new Date(today + "T12:00:00Z");
+    y.setUTCDate(y.getUTCDate() - 1);
+    if (key === y.toISOString().slice(0, 10)) return "Yesterday";
+    var sameYear = key.slice(0, 4) === today.slice(0, 4);
+    return d.toLocaleDateString(undefined, sameYear
+        ? { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }
+        : { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
+function taskGroups(rows, today) {
+    var seen = {}, groups = [];
+    (rows || []).forEach(function(task) {
+        var key = task.createdAt ? dayKey(task.createdAt) : "0";
+        if (!seen[key]) {
+            seen[key] = { key: key, label: dayLabel(key, today), tasks: [] };
+            groups.push(seen[key]);
+        }
+        seen[key].tasks.push(task);
+    });
+    // Newest group first; tasks with no created date close the list.
+    groups.sort(function(a, b) {
+        if (a.key === "0") return 1;
+        if (b.key === "0") return -1;
+        return b.key.localeCompare(a.key);
+    });
+    return groups;
+}
 function advance(s, delta, now) {
     if (!s.focus.running) return "idle";
     // Suspend or a stalled desktop must not count as active work.

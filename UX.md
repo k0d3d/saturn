@@ -98,19 +98,27 @@ Filters are text tabs with counts. The composer is two inline fields — task an
 optional due date — with `Enter` to add. `N` focuses the composer, even when the
 grid is showing.
 
-Expanded Tasks keeps the list on the left and opens a context rail on the right.
-The rail is deliberately provisional: it currently shows the selected task and
-focus/archive actions, with room for graph links, related notes or an agenda
-later.
+Rows are grouped by the day they were created, newest group first, with a quiet
+uppercase date header and a count. Tasks with no creation stamp close the list
+under `Older`.
+
+Expanded Tasks splits 40/60: the single-line list on the left, the selected task
+on the right. The right pane leads with the full title, then metadata (status,
+due, added date, tags), then the full body in a scrollable reading column. The
+list truncates; the pane never does. The pane is still deliberately provisional
+and has room for graph links, related notes or an agenda later.
+
+Minimal hairline borders (10% text alpha, accent at 50% for selection) give the
+rows and the pane edges without heavier card chrome.
 
 ## Open design questions
 
 Card interactions are being designed one card at a time. The current grid is a
 base, not a final component spec.
 
-- **Expanded Tasks right pane** — deliberately open. Candidates to evaluate:
-  selected task detail and body, related notes from the knowledge graph, a
-  day agenda, or a task board. Do not lock this to a generic detail pane yet.
+- **Expanded Tasks right pane** — deliberately open beyond the selected task.
+  Candidates to evaluate: related notes from the knowledge graph, a day agenda,
+  or a task board. Keep the full title and body first.
 - **Notepad** — how much of the note body should stay visible versus writing
   in a focused editor; whether day navigation should be a scrubber.
 - **Focus** — dial interaction beyond start/pause: drag to set duration, preset
