@@ -7,15 +7,15 @@ QtObject {
     readonly property color accent: Color.accent
     readonly property color muted: blend(Color.background, Color.foreground, 0.66)
     readonly property color urgent: Color.urgent
-    readonly property color border: blend(Color.background, Color.accent, 0.4)
+    readonly property color border: blend(Color.background, Color.foreground, 0.14)
     readonly property color surface: blend(Color.background, Color.foreground, 0.065)
     readonly property color raised: blend(Color.background, Color.foreground, 0.11)
-    readonly property color hover: blend(Color.background, Color.accent, 0.2)
-    readonly property color tasks: Qt.lighter(blend(blend(Color.background, Color.foreground, 0.08), Color.accent, 0.22), 1.15)
-    readonly property color focus: Qt.lighter(blend(blend(Color.background, Color.foreground, 0.10), Color.accent, 0.28), 1.15)
-    readonly property color notes: Qt.lighter(blend(Color.background, Color.foreground, 0.15), 1.12)
-    readonly property color events: Qt.lighter(blend(blend(Color.background, Color.foreground, 0.08), Color.accent, 0.14), 1.12)
-    readonly property color mail: Qt.lighter(blend(blend(Color.background, Color.foreground, 0.08), Color.accent, 0.24), 1.15)
+    readonly property color hover: blend(Color.background, Color.foreground, 0.13)
+    readonly property color tasks: surface
+    readonly property color focus: surface
+    readonly property color notes: surface
+    readonly property color events: surface
+    readonly property color mail: surface
     readonly property string font: Style.font.family
     function blend(base, tint, amount) { return Qt.rgba(base.r * (1-amount) + tint.r * amount, base.g * (1-amount) + tint.g * amount, base.b * (1-amount) + tint.b * amount, 1); }
     function alpha(color, amount) { return Qt.rgba(color.r, color.g, color.b, amount); }

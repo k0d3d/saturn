@@ -20,6 +20,19 @@ function weekday(name, today) {
     if (delta === 0) delta = 7; // "next Monday" always means a future day.
     return addDays(d.toISOString().slice(0, 10), delta);
 }
+// Resolve a standalone due-field value (what the user types into a date box)
+// to an ISO day key. Accepts the same words as the title parser.
+function parseDay(value, today) {
+    var word = String(value || "").trim().toLowerCase();
+    if (!word) return null;
+    if (validDay(word)) return word;
+    if (word === "today") return today || new Date().toISOString().slice(0, 10);
+    if (word === "tomorrow") return addDays(today, 1);
+    if (/^next\s+(?:mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday|sun|sunday)$/.test(word)) {
+        return weekday(word.replace(/^next\s+/, ""), today);
+    }
+    return null;
+}
 // Pull a due date out of free text and return the remaining title.
 function parseDue(text, today) {
     var value = String(text || "");
@@ -29,10 +42,7 @@ function parseDue(text, today) {
     if (!due) {
         match = value.match(/\s+(today|tomorrow|next\s+(?:mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday|sun|sunday))\s*$/i);
         if (match) {
-            var word = match[1].toLowerCase();
-            due = word === "today" ? (today || new Date().toISOString().slice(0, 10))
-                : word === "tomorrow" ? addDays(today, 1)
-                : weekday(word.replace(/^next\s+/, ""), today);
+            due = parseDay(match[1], today);
             if (due) value = value.slice(0, match.index);
         }
     }

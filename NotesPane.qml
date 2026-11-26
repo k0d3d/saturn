@@ -15,6 +15,8 @@ Item {
     property string draftBody: ""
     property string draftTags: ""
     property string draftDate: ""
+    property bool embedded: false
+    signal finished()
 
     Theme { id: theme }
     Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
@@ -52,14 +54,9 @@ Item {
     }
     function select(item) {
         if (!item) return;
-        if (Notes.isDaily(item.id)) {
-            store.noteDay = item.date;
-            store.showPulse("workspace");
-            return;
-        }
         pane.selected = item;
         pane.draftTitle = item.title || "";
-        pane.draftBody = item.body || "";
+        pane.draftBody = Notes.isDaily(item.id) ? store.dailyNoteBody(item.date) : (item.body || "");
         pane.draftTags = Notes.tagsText(item.tags || []);
         pane.draftDate = item.date || "";
     }
@@ -68,20 +65,29 @@ Item {
         pane.draftTitle = ""; pane.draftBody = ""; pane.draftTags = ""; pane.draftDate = "";
         titleField.forceActiveFocus();
     }
+    function createForDay(day) {
+        pane.create();
+        pane.draftDate = day;
+    }
     function back() {
         pane.selected = null;
         store.notesSelection = "";
+        if (pane.embedded) pane.finished();
     }
-    function save() {
+    function save(stay) {
         var title = pane.draftTitle.trim();
+        if (!title && pane.draftBody.trim()) title = "Untitled note";
         if (!title) return;
-        if (pane.selected && pane.selected.id) {
+        if (pane.selected && pane.selected.id && Notes.isDaily(pane.selected.id)) {
+            store.setDailyNote(pane.draftDate || pane.selected.date, pane.draftBody);
+        } else if (pane.selected && pane.selected.id) {
             store.updateNote(pane.selected.id, title, pane.draftBody, pane.draftTags, pane.draftDate);
         } else {
             var id = store.addNote(title, pane.draftBody, pane.draftTags, pane.draftDate);
             pane.selected = {id: id, title: title, body: pane.draftBody, tags: Notes.normaliseTags(pane.draftTags), date: pane.draftDate, archived: false, pinned: false, source: "library"};
         }
         pane.query = "";
+        if (pane.embedded && !stay) pane.finished();
     }
     function togglePin() {
         if (!pane.selected || !pane.selected.id) return;
@@ -134,12 +140,13 @@ Item {
         }
     }
 
-    Rectangle { anchors.fill: parent; color: theme.background }
+    Rectangle { anchors.fill: parent; color: theme.background; visible: !pane.embedded }
 
     ColumnLayout {
-        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 26; spacing: 14
+        anchors.fill: parent; anchors.margins: pane.embedded ? 0 : 24; anchors.topMargin: pane.embedded ? 0 : 26; spacing: 14
 
         RowLayout {
+            visible: !pane.embedded
             Layout.fillWidth: true
             Copy { Layout.fillWidth: true; text: strings.t("notes.title"); font.pixelSize: 26; font.bold: true }
             Copy {
@@ -151,6 +158,7 @@ Item {
         }
 
         RowLayout {
+            visible: !pane.embedded
             Layout.fillWidth: true; spacing: 8
             Field {
                 id: searchField
@@ -188,10 +196,9 @@ Item {
                     width: GridView.view.cellWidth - 12
                     height: 196
                     radius: 6
-                    color: theme.alpha(pane.tintFor(card.modelData.id), 0.20)
+                    color: cardHover.hovered ? theme.hover : theme.raised
                     border.width: 1
-                    border.color: cardHover.hovered ? theme.alpha(pane.tintFor(card.modelData.id), 0.55)
-                                                    : theme.alpha(pane.tintFor(card.modelData.id), 0.34)
+                    border.color: theme.alpha(theme.text, cardHover.hovered ? 0.14 : 0.05)
                     Behavior on border.color { ColorAnimation { duration: 120 } }
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 14; spacing: 6
@@ -205,7 +212,7 @@ Item {
                             }
                             Copy {
                                 Layout.fillWidth: true
-                                text: card.modelData.date || ""
+                                text: Notes.boardDate(card.modelData.date, pane.store.today)
                                 color: theme.muted; font.pixelSize: 10
                             }
                             Copy {
@@ -258,13 +265,15 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Btn { text: "‹ " + strings.t("notes.all"); onClicked: pane.back() }
+                    Btn { visible: !pane.embedded; text: "‹ " + strings.t("notes.all"); onClicked: pane.back() }
                     Item { Layout.fillWidth: true }
                     Btn {
+                        visible: !!pane.selected && !!pane.selected.id
                         text: pane.selected && pane.selected.pinned ? strings.t("notes.unpin") : strings.t("notes.pin")
                         onClicked: pane.togglePin()
                     }
                     Btn {
+                        visible: !!pane.selected && !!pane.selected.id
                         text: pane.selected && pane.selected.archived ? strings.t("notes.restore") : strings.t("notes.archive")
                         onClicked: pane.toggleArchive()
                     }

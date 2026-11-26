@@ -36,6 +36,21 @@ test("invalid dates and long titles are bounded", () => {
   assert.equal(result.due, "2026-11-24");
 });
 
+test("the due field accepts relative words, not just ISO dates", () => {
+  assert.equal(context.parseDay("tomorrow", today), "2026-11-24");
+  assert.equal(context.parseDay("today", today), today);
+  assert.equal(context.parseDay("2026-11-30", today), "2026-11-30");
+  assert.equal(context.parseDay("next Mon", today), "2026-11-30");
+  assert.equal(context.parseDay("nonsense", today), null);
+  assert.equal(context.parseDay("", today), null);
+});
+
+test("both due entry paths use the relative-day parser", () => {
+  const service = fs.readFileSync("Service.qml", "utf8");
+  assert.match(service, /var due = Dates\.parseDay\(dueText, today\) \|\| parsed\.due;/);
+  assert.match(service, /t\.due = Dates\.parseDay\(due, today\) \|\| null;/);
+});
+
 test("labels distinguish today, tomorrow and overdue", () => {
   assert.equal(context.dueLabel(today, today), "Today");
   assert.equal(context.dueLabel("2026-11-24", today), "Tomorrow");

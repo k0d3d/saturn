@@ -15,10 +15,10 @@ Item {
     readonly property alias workspacePanel: dashboardWindow
     readonly property alias timerPopout: focusPopout
     readonly property alias commandPanel: commandWindow
-    function open() { commandOpen = false; dashboardOpen = true; }
+    function open() { store.closeOtherWindows(win); commandOpen = false; dashboardOpen = true; }
     function close() { store.flush(); dashboardOpen = false; }
     function openDashboard() { open(); }
-    function openCommand() { dashboardOpen = false; commandOpen = true; }
+    function openCommand() { store.closeOtherWindows(win); dashboardOpen = false; commandOpen = true; }
     CommandWindow {
         id: commandWindow; screen: win.screen; store: win.store; visible: win.commandOpen
         onDismissed: win.commandOpen = false

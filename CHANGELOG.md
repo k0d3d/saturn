@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The due-date field now accepts `today`, `tomorrow`, `next <weekday>` and ISO dates. Previously typing `tomorrow` there was silently discarded; both task creation and inline due editing use the same parser as title dates.
+
 - Added a fullscreen, borderless card workspace: asymmetric five-card grid, exposed stack layers for volume, attention dot, session-local last-viewed tick, and animated expand/collapse focus.
 - Removed the compact/collapsed workspace and hover-to-open behavior; the bar now opens the full workspace directly.
 - Replaced filled button rows with text tabs, hover-only task actions, inline add fields and a clickable Focus timer dial.
@@ -16,11 +18,11 @@
 - Expanded Tasks is now a full-height two-pane split: a darker 40% list side, a borderless 60% detail side on the card itself, and one hairline divider. Added a `Tags` tab with a frequency-sized tag cloud that filters the list.
 - A focused card now takes 84% of the workspace; the remaining strip is a `SWITCH` rail of the other cards as clickable mini cards with live captions.
 - Escape is a window shortcut, so it closes the workspace even when a text field has focus.
-- New Saturn brand mark generated with Recraft V3 SVG on Replicate; the shell uses a mipmapped PNG so the mark stays crisp at header size.
+- New Saturn brand mark generated with Recraft V3 SVG on Replicate; the generated navy backdrop was removed so the mark and its mipmapped PNG are transparent in the header and bar.
 - The header tagline now rotates through twenty aphorisms and attributed quotations about time, attention and work. Removed the last-viewed bookmark tick from card chrome.
 - Every card heading now carries its icon. Notepad was rebuilt around a larger daily editor, compact today's-note pills and an expanded board of tinted note cards; the old full-width linked-note rows are gone.
-- Notepad has Write / All notes / full-card Note views; wiki links render as links in the reading view and are stripped from previews.
-- Saturn now opens on the focused monitor only and dismisses itself when that monitor's workspace changes.
+- Notepad opens on a Board of all library and daily notes, with relative dates. `New note` and clicking a card open the same embedded editor. Back/close/Escape return to Board; chevrons browse between notes. Write/Board tabs and the standalone Notes screen are gone.
+- Saturn opens on the focused monitor only; switching monitors closes the previous overlay. Its fullscreen panel no longer requests exclusive keyboard focus, and workspace events recheck its opening workspace.
 
 ## 0.8.0
 

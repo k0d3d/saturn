@@ -20,6 +20,7 @@ colorization, so the same asset follows the active Omarchy theme.
 | `calendar.svg` | Events switch tile |
 | `mail.svg` | Mail switch tile |
 
-`assets/saturn.svg` is the brand mark generated with Recraft V3 SVG on Replicate;
-`assets/saturn.png` is its 512px raster for the shell header and bar, where it is
-scaled down with mipmaps.
+`assets/saturn.svg` is the brand mark generated with Recraft V3 SVG on Replicate,
+with the generated full-canvas backdrop removed so it blends into any surface.
+`assets/saturn.png` is its 512px transparent raster for the shell header and bar,
+where it is scaled down with mipmaps.

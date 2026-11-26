@@ -50,6 +50,37 @@ function plain(body) {
         .replace(/\s+/g, " ")
         .trim();
 }
+function boardDate(date, today) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))) return "Undated";
+    var noteDay = new Date(date + "T12:00:00Z");
+    var currentDay = new Date(String(today || "") + "T12:00:00Z");
+    if (isNaN(noteDay.getTime()) || noteDay.toISOString().slice(0, 10) !== date ||
+        isNaN(currentDay.getTime())) return "Undated";
+    var days = Math.round((currentDay.getTime() - noteDay.getTime()) / 86400000);
+    if (days === 0) return "Today";
+    if (days === 1) return "Yesterday";
+    if (days >= 2 && days <= 6) return days + " days ago";
+    if (days === -1) return "Tomorrow";
+    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return noteDay.getUTCDate() + " " + months[noteDay.getUTCMonth()] +
+        (noteDay.getUTCFullYear() === currentDay.getUTCFullYear() ? "" : " " + noteDay.getUTCFullYear());
+}
+function readingLines(body) {
+    var input = String(body || "").trim() || "No text yet.";
+    return input.split("\n").map(function(line) {
+        var heading = /^#{1,6}\s+/.test(line);
+        if (heading) line = line.replace(/^#{1,6}\s+/, "");
+        var parts = [], cursor = 0, match, pattern = /\[\[([^\[\]]{1,200})\]\]/g;
+        while ((match = pattern.exec(line)) !== null) {
+            if (match.index > cursor) parts.push({text: line.slice(cursor, match.index)});
+            parts.push({reference: match[1]});
+            cursor = pattern.lastIndex;
+        }
+        if (cursor < line.length) parts.push({text: line.slice(cursor)});
+        return {heading: heading, parts: parts};
+    });
+}
 function matches(note, query) {
     if (!query) return true;
     var terms = String(query).toLowerCase().split(/\s+/).filter(Boolean);
@@ -57,7 +88,7 @@ function matches(note, query) {
     return terms.every(function(term) { return haystack.indexOf(term) >= 0; });
 }
 // Library notes plus day-keyed daily notes, with pinned items first.
-function search(state, query, limit) {
+function search(state, query, limit, today) {
     var max = Math.min(Math.max(Number(limit) || 80, 1), 100);
     var results = [];
     var library = state && Array.isArray(state.notesV2) ? state.notesV2 : [];
@@ -71,7 +102,7 @@ function search(state, query, limit) {
     var days = state && state.notes ? state.notes : {};
     for (var date in days) {
         if (!Object.prototype.hasOwnProperty.call(days, date)) continue;
-        var daily = {title: "Daily note · " + date, body: days[date], date: date, tags: [],
+        var daily = {title: "Daily note · " + boardDate(date, today), body: days[date], date: date, tags: [],
                      archived: false, pinned: false, updatedAt: 0};
         if (!matches(daily, query)) continue;
         results.push({id: dailyId(date), title: daily.title, body: excerpt(daily.body, 200),

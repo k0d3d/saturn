@@ -177,7 +177,7 @@ Item {
     signal taskAdded(string title)
     function addTask(title, dueText) {
         var parsed = Dates.parseDue(title, today);
-        var due = Dates.validDay(dueText) ? dueText : parsed.due;
+        var due = Dates.parseDay(dueText, today) || parsed.due;
         if (!ready || error || !parsed.title) return;
         var stamp = Date.now();
         workspace.tasks.unshift({
@@ -202,7 +202,7 @@ Item {
     function setTaskDue(id, due) {
         var t = findTask(id);
         if (!t || !ready || error) return;
-        t.due = Dates.validDay(due) ? due : null;
+        t.due = Dates.parseDay(due, today) || null;
         t.updatedAt = Date.now();
         changed(true, true);
     }
@@ -316,8 +316,14 @@ Item {
         notice = "Note restored.";
     }
     function searchNotes(query, limit) {
-        return Notes.search(workspace, query || "", limit || 80);
+        return Notes.search(workspace, query || "", limit || 80, root.today);
     }
+    function setDailyNote(date, text) {
+        if (!ready || error || !/^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))) return;
+        workspace.notes[date] = String(text || "");
+        changed();
+    }
+    function dailyNoteBody(date) { return workspace.notes[date] || ""; }
     // Library notes dated to a day. Used by the daily-note hub; derived, never
     // persisted, so the graph and vault remain the sources of truth.
     function notesForDay(day) { return Visual.forDay(workspace, day); }
@@ -518,6 +524,14 @@ Item {
     }
     function eachWindow(action) {
         for (var i = 0; i < windows.count; i++) action(windows.objectAt(i));
+    }
+    function closeOtherWindows(current) {
+        eachWindow(function(panel) {
+            if (panel && panel !== current) {
+                panel.dashboardOpen = false;
+                panel.commandOpen = false;
+            }
+        });
     }
     // Commands without a screen argument belong to the monitor the user is on,
     // not to every monitor at once.

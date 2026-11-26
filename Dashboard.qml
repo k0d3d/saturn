@@ -26,13 +26,19 @@ PanelWindow {
     readonly property string slogan: Slogans.lines[dash.sloganIndex % Slogans.lines.length]
     property bool awaitingEntry: false
     readonly property bool hovered: workspaceHover.hovered
-    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || eventTitle.activeFocus || eventStart.activeFocus || connectionsOpen || notesOpen
+    readonly property bool editing: taskInput.activeFocus || dueInput.activeFocus || notes.activeFocus || minutesInput.activeFocus || eventTitle.activeFocus || eventStart.activeFocus || connectionsOpen || notesOpen || notesView === "edit"
     readonly property real uiScale: compact ? 0.82 : 1
     property string taskView: "Today"
     property bool insights: false
     property bool notesOpen: false
     property bool notesLoaded: false
-    onNotesOpenChanged: if (notesOpen) { connectionsOpen=false; insights=false; notesLoaded=true; }
+    onNotesOpenChanged: if (notesOpen) {
+        connectionsOpen = false; insights = false;
+        focusedCard = "notes";
+        if (store.notesSelection) viewNote(store.notesSelection);
+        else showNotes("board");
+        notesOpen = false;
+    }
     property bool connectionsOpen: false
     property bool connectionsLoaded: false
     onConnectionsOpenChanged: if (connectionsOpen) { notesOpen=false; insights=false; connectionsLoaded=true; }
@@ -76,6 +82,23 @@ PanelWindow {
         if (openedWorkspace === -1) { openedWorkspace = activeWorkspaceId; return; }
         if (activeWorkspaceId !== -1 && activeWorkspaceId !== openedWorkspace) dash.close();
     }
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "workspacev2" || event.name === "focusedmonv2")
+                workspaceCheck.restart();
+        }
+    }
+    Timer {
+        id: workspaceCheck
+        interval: 100
+        onTriggered: {
+            var monitor = Hyprland.monitorFor(dash.screen);
+            var current = monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : -1;
+            if (dash.visible && dash.openedWorkspace !== -1 && current !== -1 && current !== dash.openedWorkspace)
+                dash.close();
+        }
+    }
     readonly property int taskAttention: Visual.attention(dash.store.tasks, dash.store.today, 0).level
     readonly property var dayNotes: {
         store.revision;
@@ -114,11 +137,9 @@ PanelWindow {
         Qt.rgba(0.88, 0.42, 0.46, 1),
         Qt.rgba(0.50, 0.82, 0.90, 1)
     ]
-    readonly property var boardNotes: {
+    readonly property var allNotes: {
         dash.store.revision;
-        return (dash.store.workspace.notesV2 || []).filter(function(note) { return !note.archived; }).sort(function(a, b) {
-            return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0);
-        });
+        return dash.store.searchNotes("", 100).filter(function(note) { return !note.archived; });
     }
     function noteTint(id) {
         var text = String(id || ""), hash = 0;
@@ -127,18 +148,6 @@ PanelWindow {
     }
     function noteDate(note) {
         return note && note.date ? Qt.formatDate(new Date(note.date + "T12:00:00"), "d MMM") : "Undated";
-    }
-    // Wiki links are graph syntax. The reading view renders them as links;
-    // previews strip the brackets because they are just noise there.
-    function noteHtml(body) {
-        var text = String(body || "");
-        if (!text.trim()) return "No text yet.";
-        text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        text = text.replace(/\[\[([^\[\]]{1,200})\]\]/g, function(match, title) {
-            return "<a href=\"" + title.replace(/"/g, "&quot;") + "\">" + title + "</a>";
-        });
-        text = text.replace(/^##\s+(.+)$/gm, "<b>$1</b>");
-        return text.replace(/\n/g, "<br>");
     }
     function openWikiLink(title) {
         var task = (dash.store.tasks || []).find(function(item) { return item.title === title; });
@@ -149,17 +158,16 @@ PanelWindow {
         }
         var note = (dash.store.workspace.notesV2 || []).find(function(item) { return item.title === title; });
         if (note) {
-            dash.openNoteId = note.id;
-            dash.notesView = "note";
+            dash.viewNote(note.id);
         }
     }
-    // Notepad views: write (editor + notes strip), board (full-card grid),
+    // Notepad views: write (daily editor + dated notes), board (full-card grid),
     // note (one note full-card). The top-level Notes surface has its own editor.
     property string notesView: "write"
     property string openNoteId: ""
     readonly property var openNote: {
         dash.store.revision;
-        return (dash.store.workspace.notesV2 || []).find(function(note) { return note.id === dash.openNoteId; }) || null;
+        return dash.allNotes.find(function(note) { return note.id === dash.openNoteId; }) || null;
     }
     function showNotes(view) {
         dash.notesView = view;
@@ -167,8 +175,49 @@ PanelWindow {
     }
     function viewNote(id) {
         if (!id) return;
+        dash.focusedCard = "notes";
         dash.openNoteId = id;
-        dash.notesView = "note";
+        dash.notesLoaded = true;
+        dash.notesView = "edit";
+        Qt.callLater(function() {
+            var pane = notesLoader.item as NotesPane;
+            if (pane) pane.select(dash.openNote);
+        });
+    }
+    function returnToBoard() {
+        if (dash.notesView === "edit") {
+            var pane = notesLoader.item as NotesPane;
+            if (pane) pane.save(true);
+        }
+        dash.showNotes("board");
+    }
+    function browseNote(offset) {
+        var index = dash.allNotes.findIndex(function(note) { return note.id === dash.openNoteId; });
+        var target = dash.allNotes[index + offset];
+        if (!target) return;
+        if (dash.notesView === "edit") {
+            var pane = notesLoader.item as NotesPane;
+            if (pane) pane.save(true);
+        }
+        dash.viewNote(target.id);
+    }
+    readonly property int openNoteIndex: dash.allNotes.findIndex(function(note) { return note.id === dash.openNoteId; })
+    property string pendingNoteDay: ""
+    function createNoteForDay(day) {
+        if (dash.notesView === "edit") {
+            var current = notesLoader.item as NotesPane;
+            if (current) current.save(true);
+        }
+        dash.openNoteId = "";
+        dash.pendingNoteDay = day;
+        dash.notesLoaded = true;
+        dash.focusedCard = "notes";
+        dash.notesView = "edit";
+        var pane = notesLoader.item as NotesPane;
+        if (pane) {
+            pane.createForDay(day);
+            dash.pendingNoteDay = "";
+        }
     }
     readonly property string graphScript: Qt.resolvedUrl("scripts/saturn_graph.py").toString().replace("file://", "")
     property Process graphQuery: Process {
@@ -267,6 +316,7 @@ PanelWindow {
     function handleEscape() {
         if (dash.editingTaskId) { dash.editingTaskId = ""; return; }
         if (dash.dueTaskId) { dash.dueTaskId = ""; return; }
+        if (dash.focusedCard === "notes" && dash.notesView !== "board") { dash.returnToBoard(); return; }
         if (dash.focusedCard) { dash.focusedCard = ""; return; }
         dash.close();
     }
@@ -277,6 +327,7 @@ PanelWindow {
     onSelectedTaskIdChanged: dash.refreshGraph()
     onFocusedCardChanged: {
         if (focusedCard === "mail") mailLoaded = true;
+        if (focusedCard === "notes") notesView = "board";
         if (focusedCard !== "notes") { notesView = "write"; openNoteId = ""; }
         if (focusedCard === "tasks") {
             if (taskView !== "Tags" && !selectedTaskId) selectFirstTask();
@@ -306,7 +357,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: compact ? "saturn-workspace" : "saturn-dashboard"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: visible ? (compact ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive) : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     color: "transparent"
     onVisibleChanged: {
         if (!visible) { frostReady = false; frostLoader.active = false; focusedCard = ""; editingTaskId = ""; dueTaskId = ""; return; }
@@ -393,21 +444,6 @@ PanelWindow {
         Behavior on width { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
         Behavior on height { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
 
-        Repeater {
-            model: 3
-            Rectangle {
-                required property int index
-                visible: index < card.volume
-                z: -1 - index
-                x: (index + 1) * 5 + card.stackLift
-                y: (index + 1) * 5 + card.stackLift
-                width: card.width; height: card.height; radius: 6
-                color: card.color
-                opacity: index === 0 ? 0.5 : index === 1 ? 0.3 : 0.16
-                Behavior on x { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
-                Behavior on y { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
-            }
-        }
         Rectangle {
             id: surface
             anchors.fill: parent; radius: 6; color: card.color
@@ -432,7 +468,10 @@ PanelWindow {
             hoverEnabled: true; focusPolicy: Qt.NoFocus
             opacity: card.hovered || card.focused ? 1 : 0.32
             Behavior on opacity { NumberAnimation { duration: Style.duration(140) } }
-            onClicked: dash.focusedCard = card.focused ? "" : card.role
+            onClicked: {
+                if (card.role === "notes" && card.focused && dash.notesView !== "board") dash.returnToBoard();
+                else dash.focusedCard = card.focused ? "" : card.role;
+            }
             Accessible.name: card.focused ? "Return to workspace" : "Expand " + card.role
             ToolTip.visible: hovered; ToolTip.text: card.focused ? "Back to workspace (Esc)" : "Expand"
             contentItem: Label {
@@ -449,7 +488,7 @@ PanelWindow {
         property string icon: ""
         spacing: 9
         Icon { name: heading.icon; size: 18; tint: theme.alpha(theme.text, 0.72) }
-        Label { text: heading.text; font.pixelSize: 22; font.weight: Font.DemiBold }
+        Label { text: heading.text; font.pixelSize: 18; font.weight: Font.DemiBold }
         Item { Layout.fillWidth: true }
     }
     // Text-first controls. No filled button chrome unless the surface itself is
@@ -472,6 +511,63 @@ PanelWindow {
             font.weight: tab.selected ? Font.DemiBold : Font.Normal
             color: tab.selected ? theme.text : tab.hovered ? theme.text : theme.muted
             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+        }
+    }
+    component NoteTab: AbstractButton {
+        id: noteTab
+        property string iconName: ""
+        property bool selected: false
+        implicitHeight: 36
+        implicitWidth: tabContent.implicitWidth + 18
+        hoverEnabled: true
+        focusPolicy: Qt.StrongFocus
+        background: Item {
+            Rectangle {
+                anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width - 12; height: 2
+                color: noteTab.selected ? theme.accent : "transparent"
+            }
+        }
+        contentItem: RowLayout {
+            id: tabContent
+            spacing: 7
+            Icon { name: noteTab.iconName; size: 14; tint: noteTab.selected ? theme.text : theme.alpha(theme.text, 0.66) }
+            Label {
+                text: noteTab.text; font.pixelSize: 13
+                font.weight: noteTab.selected ? Font.DemiBold : Font.Normal
+                color: noteTab.selected || noteTab.hovered ? theme.text : theme.alpha(theme.text, 0.68)
+            }
+        }
+    }
+    component DayArrow: AbstractButton {
+        id: dayArrow
+        property string iconName: ""
+        implicitWidth: 34; implicitHeight: 34
+        hoverEnabled: true
+        focusPolicy: Qt.StrongFocus
+        opacity: enabled ? 1 : 0.3
+        background: Rectangle { radius: 4; color: dayArrow.hovered ? theme.alpha(theme.text, 0.07) : "transparent" }
+        contentItem: Item {
+            Icon { name: dayArrow.iconName; size: 14; tint: theme.text; anchors.centerIn: parent }
+        }
+    }
+    component NewNoteButton: AbstractButton {
+        id: newNoteButton
+        text: "New note"
+        implicitHeight: 36
+        implicitWidth: newNoteContent.implicitWidth + 20
+        hoverEnabled: true
+        focusPolicy: Qt.StrongFocus
+        background: Rectangle {
+            radius: 5
+            color: newNoteButton.hovered ? theme.alpha(theme.text, 0.07) : "transparent"
+            Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+        }
+        contentItem: RowLayout {
+            id: newNoteContent
+            spacing: 7
+            Icon { name: "plus"; size: 15; tint: theme.text }
+            Label { text: newNoteButton.text; font.pixelSize: 13; font.weight: Font.DemiBold; color: theme.text }
         }
     }
     component Glyph: AbstractButton {
@@ -541,12 +637,7 @@ PanelWindow {
         implicitHeight: 30
         Rectangle {
             anchors.fill: parent; radius: 4
-            color: action.hovered ? theme.alpha(theme.text, 0.06) : "transparent"
-            Behavior on color { ColorAnimation { duration: Style.duration(120) } }
-        }
-        Rectangle {
-            anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-            height: 2; color: action.hovered ? theme.alpha(theme.accent, 0.6) : "transparent"
+            color: action.hovered ? theme.hover : "transparent"
             Behavior on color { ColorAnimation { duration: Style.duration(120) } }
         }
         Row {
@@ -678,7 +769,6 @@ PanelWindow {
                 }
                 Item { Layout.fillWidth: true }
                 Tab { text: "Workspace"; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.focusedCard = ""; dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; } }
-                Tab { text: "Notes"; selected: dash.notesOpen; onClicked: { dash.focusedCard = ""; store.notesSelection = ""; dash.notesOpen = true; } }
                 Tab { text: "Insights"; selected: dash.insights; onClicked: { dash.focusedCard = ""; dash.insights = true; dash.connectionsOpen = false; } }
                 Tab { text: "Connections"; selected: dash.connectionsOpen; onClicked: { dash.focusedCard = ""; dash.connectionsOpen = true; dash.insights = false; } }
                 Tab { text: dash.frosted ? "Frost" : "Frost off"; selected: dash.frosted; onClicked: dash.frosted = !dash.frosted; ToolTip.visible: hovered; ToolTip.text: "Blur the desktop behind the workspace" }
@@ -712,33 +802,27 @@ PanelWindow {
                         anchors.fill: parent
                         anchors.topMargin: 10; anchors.bottomMargin: 10
                         spacing: 8
-                        Label {
-                            text: "SWITCH"
-                            font.pixelSize: 10; font.letterSpacing: 1.4; font.weight: Font.DemiBold
-                            color: theme.alpha(theme.text, 0.45)
-                            Layout.leftMargin: 2; Layout.bottomMargin: 2
-                        }
                         Repeater {
                             model: dash.switchRoles
                             Rectangle {
                                 id: mini
                                 required property string modelData
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 90
+                                Layout.preferredHeight: 58
                                 radius: 6
-                                color: dash.cardColor(mini.modelData)
-                                border.width: 1
-                                border.color: miniHover.hovered ? theme.alpha(theme.text, 0.22) : theme.alpha(theme.text, 0.08)
+                                color: theme.alpha(theme.text, miniHover.hovered ? 0.07 : 0.02)
+                                border.width: 0
                                 Behavior on border.color { ColorAnimation { duration: Style.duration(120) } }
                                 RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 14
-                                    spacing: 12
-                                    Icon { name: dash.roleIcon(mini.modelData); size: 20; tint: theme.alpha(theme.text, 0.8) }
+                                    id: miniContent
+                                    anchors.centerIn: parent
+                                    width: parent.width - 32
+                                    spacing: 10
+                                    Icon { name: dash.roleIcon(mini.modelData); size: 16; tint: theme.alpha(theme.text, 0.55); Layout.alignment: Qt.AlignVCenter }
                                     ColumnLayout {
                                         Layout.fillWidth: true; spacing: 2
-                                        Label { text: dash.roleLabel(mini.modelData); font.pixelSize: 14; font.weight: Font.DemiBold }
-                                        Label { text: dash.roleCaption(mini.modelData); font.pixelSize: 11; color: theme.alpha(theme.text, 0.6) }
+                                        Label { Layout.fillWidth: true; text: dash.roleLabel(mini.modelData); font.pixelSize: 13; color: theme.alpha(theme.text, miniHover.hovered ? 1 : 0.7); elide: Text.ElideRight }
+                                        Label { Layout.fillWidth: true; text: dash.roleCaption(mini.modelData); font.pixelSize: 10; color: theme.alpha(theme.text, 0.4); elide: Text.ElideRight }
                                     }
                                 }
                                 HoverHandler { id: miniHover }
@@ -1216,8 +1300,8 @@ PanelWindow {
                                 }
                             }
                             RowLayout {
-                                Layout.fillWidth: true; Layout.maximumWidth: 760
-                                spacing: 4
+                                Layout.fillWidth: false
+                                spacing: 6
                                 visible: !!dash.selectedTask
                                 ActionButton {
                                     icon: "play"; text: "Focus 25m"
@@ -1230,7 +1314,6 @@ PanelWindow {
                                     icon: "pencil"; text: "Edit"
                                     onClicked: dash.editTask(dash.selectedTask)
                                 }
-                                Item { Layout.fillWidth: true }
                                 IconButton {
                                     iconName: dash.selectedTask && dash.selectedTask.archived ? "undo" : "archive"
                                     label: "Archive selected task"
@@ -1289,34 +1372,50 @@ PanelWindow {
                     z: dash.focusedCard === "notes" ? 10 : 0
                     enabled: !dash.focusedCard || dash.focusedCard === "notes"
                     ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 32; spacing: 12
+                        anchors.fill: parent; anchors.margins: 24
+                        anchors.topMargin: dash.focusedCard === "notes" ? 10 : 32
+                        spacing: 12
                         RowLayout {
-                            Layout.fillWidth: true
+                            Layout.fillWidth: true; Layout.rightMargin: dash.focusedCard === "notes" ? 30 : 0
+                            spacing: 10
                             CardHeading { Layout.fillWidth: true; icon: "notebook-pen"; text: "Notepad" }
-                            Tab { text: "Write"; selected: dash.notesView === "write"; visible: dash.focusedCard === "notes"; onClicked: dash.showNotes("write") }
-                            Tab { text: "All notes"; selected: dash.notesView !== "write"; visible: dash.focusedCard === "notes"; onClicked: dash.showNotes("board") }
+                            NewNoteButton { onClicked: dash.createNoteForDay(dash.store.today) }
                         }
                         RowLayout {
-                            Layout.fillWidth: true; spacing: 4
-                            visible: dash.notesView === "write"
-                            Label { Layout.fillWidth: true; text: dash.store.noteDay; font.pixelSize: 12; opacity: 0.65 }
-                            Glyph { text: "‹"; onClicked: { page.forceActiveFocus(); dash.store.moveNoteDay(-1); } }
-                            Tab { text: "Today"; onClicked: { page.forceActiveFocus(); dash.store.noteDay = dash.store.today; } }
-                            Glyph { text: "›"; enabled: dash.store.noteDay < dash.store.today; onClicked: { page.forceActiveFocus(); dash.store.moveNoteDay(1); } }
+                            visible: dash.focusedCard === "notes" && dash.notesView !== "board"
+                            Layout.fillWidth: true; spacing: 8
+                            Tab { text: "‹ Board"; onClicked: dash.returnToBoard() }
+                            Item { Layout.fillWidth: true }
+                            DayArrow { iconName: "chevron-left"; Accessible.name: "Previous note"; enabled: dash.openNoteIndex > 0; onClicked: dash.browseNote(-1) }
+                            Label {
+                                text: dash.openNoteId ? Notes.boardDate(Notes.isDaily(dash.openNoteId) ? dash.store.noteDay : (dash.openNote ? dash.openNote.date : ""), dash.store.today) : "New note"
+                                font.pixelSize: 12; color: theme.muted
+                            }
+                            DayArrow { iconName: "chevron-right"; Accessible.name: "Next note"; enabled: dash.openNoteIndex >= 0 && dash.openNoteIndex < dash.allNotes.length - 1; onClicked: dash.browseNote(1) }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true; spacing: 10
+                            visible: dash.notesView === "write" && dash.focusedCard !== "notes"
+                            DayArrow { iconName: "chevron-left"; Accessible.name: "Previous day"; onClicked: dash.store.moveNoteDay(-1) }
+                            Label {
+                                text: Notes.boardDate(dash.store.noteDay, dash.store.today)
+                                font.pixelSize: 13; color: theme.alpha(theme.text, 0.8)
+                            }
+                            DayArrow { iconName: "chevron-right"; Accessible.name: "Next day"; enabled: dash.store.noteDay < dash.store.today; onClicked: dash.store.moveNoteDay(1) }
+                            Tab { text: "Today"; visible: dash.store.noteDay !== dash.store.today; onClicked: dash.store.noteDay = dash.store.today }
+                            Item { Layout.fillWidth: true }
                         }
                         Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.alpha(theme.text, 0.14); visible: dash.notesView === "write" }
                         ScrollView {
                             visible: dash.notesView === "write"
                             Layout.fillWidth: true
-                            Layout.fillHeight: dash.focusedCard !== "notes"
-                            Layout.preferredHeight: dash.focusedCard === "notes" ? Math.round(parent.height * 0.40) : 0
-                            Layout.minimumHeight: dash.focusedCard === "notes" ? 200 : 0
+                            Layout.fillHeight: true
                             clip: true
                             TextArea {
                                 id: notes; text: dash.store.note
                                 onTextChanged: if (activeFocus) dash.store.setNote(text)
                                 placeholderText: "Catch a thought.\nMake a little space."; placeholderTextColor: theme.muted
-                                color: dash.textColor; wrapMode: TextEdit.Wrap; font.family: theme.font; font.pixelSize: 19
+                                color: dash.textColor; wrapMode: TextEdit.Wrap; font.family: theme.font; font.pixelSize: 16
                                 padding: 0; background: null; selectionColor: theme.accent; selectedTextColor: theme.background
                                 Keys.onPressed: function(event) {
                                     if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
@@ -1352,7 +1451,8 @@ PanelWindow {
                                         Icon { name: "file-text"; size: 12; tint: theme.alpha(theme.text, 0.55) }
                                         Label {
                                             Layout.fillWidth: true
-                                            text: notePill.modelData.title
+                                             text: notePill.modelData.title
+                                             textFormat: Text.PlainText
                                             elide: Text.ElideRight; maximumLineCount: 1
                                             font.pixelSize: 11
                                             color: theme.alpha(theme.text, 0.82)
@@ -1372,21 +1472,28 @@ PanelWindow {
                             text: (notes.text.trim() ? notes.text.trim().split(/\s+/).length : 0) + " words · Ctrl+Enter → task"
                             font.pixelSize: 11; color: theme.alpha(theme.text, 0.5)
                         }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.topMargin: 4
-                            visible: dash.focusedCard === "notes" && dash.notesView !== "note"
-                            Label { Layout.fillWidth: true; text: "All notes"; font.pixelSize: 13; font.weight: Font.DemiBold }
-                            Label {
-                                text: dash.boardNotes.length + (dash.boardNotes.length === 1 ? " note" : " notes")
-                                font.pixelSize: 11; color: theme.alpha(theme.text, 0.5)
+                        Loader {
+                            id: notesLoader
+                            Layout.fillWidth: true; Layout.fillHeight: true
+                            visible: dash.notesView === "edit"
+                            active: dash.notesLoaded
+                            sourceComponent: Component {
+                                NotesPane {
+                                    store: dash.store; embedded: true
+                                    onFinished: dash.showNotes("board")
+                                }
+                            }
+                            onLoaded: if (dash.pendingNoteDay) {
+                                var pane = notesLoader.item as NotesPane;
+                                if (pane) { pane.createForDay(dash.pendingNoteDay); dash.pendingNoteDay = ""; }
                             }
                         }
                         GridView {
                             Layout.fillWidth: true; Layout.fillHeight: true
-                            visible: dash.focusedCard === "notes" && dash.notesView !== "note"
+                            Layout.topMargin: dash.notesView === "board" ? 10 : 0
+                            visible: dash.focusedCard === "notes" && dash.notesView === "board"
                             clip: true
-                            model: dash.boardNotes
+                            model: dash.allNotes
                             readonly property int columns: Math.max(1, Math.min(4, Math.floor(width / 300)))
                             cellWidth: Math.max(220, Math.floor(width / columns))
                             cellHeight: 190
@@ -1401,10 +1508,9 @@ PanelWindow {
                                 width: GridView.view.cellWidth - 12
                                 height: 178
                                 radius: 6
-                                color: theme.alpha(dash.noteTint(noteCard.modelData.id), 0.15)
+                                color: noteHover.hovered ? theme.hover : theme.raised
                                 border.width: 1
-                                border.color: noteHover.hovered ? theme.alpha(dash.noteTint(noteCard.modelData.id), 0.55)
-                                                                : theme.alpha(dash.noteTint(noteCard.modelData.id), 0.26)
+                                border.color: theme.alpha(theme.text, noteHover.hovered ? 0.14 : 0.05)
                                 Behavior on border.color { ColorAnimation { duration: Style.duration(120) } }
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 14; spacing: 8
@@ -1413,7 +1519,7 @@ PanelWindow {
                                         Icon { name: "file-text"; size: 12; tint: theme.alpha(theme.text, 0.55) }
                                         Label {
                                             Layout.fillWidth: true
-                                            text: dash.noteDate(noteCard.modelData)
+                                        text: Notes.boardDate(noteCard.modelData.date, dash.store.today)
                                             font.pixelSize: 11; color: theme.alpha(theme.text, 0.6)
                                         }
                                         Label {
@@ -1424,13 +1530,15 @@ PanelWindow {
                                     }
                                     Label {
                                         Layout.fillWidth: true
-                                        text: noteCard.modelData.title
+                                         text: noteCard.modelData.title
+                                         textFormat: Text.PlainText
                                         font.pixelSize: 15; font.weight: Font.DemiBold
                                         wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
                                     }
                                     Label {
                                         Layout.fillWidth: true; Layout.fillHeight: true
-                                        text: Notes.excerpt(Notes.plain(noteCard.modelData.body), 300) || "No text yet."
+                                         text: Notes.excerpt(Notes.plain(noteCard.modelData.body), 300) || "No text yet."
+                                         textFormat: Text.PlainText
                                         wrapMode: Text.Wrap; maximumLineCount: 5; elide: Text.ElideRight
                                         font.pixelSize: 12; lineHeight: 1.45
                                         color: noteCard.modelData.body ? theme.alpha(theme.text, 0.7) : theme.alpha(theme.text, 0.35)
@@ -1461,20 +1569,25 @@ PanelWindow {
                                 spacing: 12
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Tab { text: "‹ All notes"; onClicked: dash.showNotes("board") }
+                                    Tab { text: "‹ Board"; onClicked: dash.showNotes("board") }
                                     Item { Layout.fillWidth: true }
                                     Tab {
                                         text: "Edit"
                                         onClicked: {
                                             if (!dash.openNote) return;
                                             dash.notesLoaded = true;
-                                            dash.store.showPulse("notes", dash.openNote.id);
+                                            dash.notesView = "edit";
+                                            Qt.callLater(function() {
+                                                var pane = notesLoader.item as NotesPane;
+                                                if (pane) pane.select(dash.openNote);
+                                            });
                                         }
                                     }
                                 }
                                 Label {
                                     Layout.fillWidth: true
-                                    text: dash.openNote ? dash.openNote.title : ""
+                                     text: dash.openNote ? dash.openNote.title : ""
+                                     textFormat: Text.PlainText
                                     font.pixelSize: 24; font.weight: Font.DemiBold
                                     wrapMode: Text.Wrap
                                 }
@@ -1499,21 +1612,60 @@ PanelWindow {
                                         color: theme.accent
                                     }
                                 }
-                                Flickable {
+                                ScrollView {
                                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    contentWidth: width
-                                    contentHeight: noteBodyText.implicitHeight
-                                    Text {
-                                        id: noteBodyText
+                                    Column {
                                         width: parent.width
-                                        text: dash.noteHtml(dash.openNote ? dash.openNote.body : "")
-                                        textFormat: Text.RichText
-                                        linkColor: theme.accent
-                                        wrapMode: Text.Wrap
-                                        color: theme.alpha(theme.text, 0.85)
-                                        font.family: theme.font; font.pixelSize: 15; lineHeight: 1.6
-                                        onLinkActivated: function(link) { dash.openWikiLink(link); }
+                                        spacing: 10
+                                        Repeater {
+                                            model: Notes.readingLines(dash.openNote ? dash.openNote.body : "")
+                                            Flow {
+                                                id: readingLine
+                                                required property var modelData
+                                                width: parent.width
+                                                spacing: 5
+                                                Repeater {
+                                                    model: modelData.parts
+                                                    delegate: Item {
+                                                        id: token
+                                                        required property var modelData
+                                                        readonly property bool reference: modelData.reference !== undefined
+                                                        width: reference ? refPill.implicitWidth : plainText.implicitWidth
+                                                        height: Math.max(refPill.implicitHeight, plainText.implicitHeight)
+                                                        Label {
+                                                            id: plainText
+                                                            visible: !token.reference
+                                                            text: token.modelData.text || ""
+                                                            textFormat: Text.PlainText
+                                                            font.pixelSize: 15
+                                                            font.weight: readingLine.modelData.heading ? Font.DemiBold : Font.Normal
+                                                            color: theme.text
+                                                        }
+                                                        Rectangle {
+                                                            id: refPill
+                                                            visible: token.reference
+                                                            implicitWidth: Math.min(refLabel.implicitWidth + 20, 360)
+                                                            implicitHeight: 28
+                                                            radius: 5
+                                                            color: theme.alpha(theme.accent, 0.18)
+                                                            Label {
+                                                                id: refLabel
+                                                                anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
+                                                             text: token.modelData.reference || ""
+                                                             textFormat: Text.PlainText
+                                                                elide: Text.ElideRight
+                                                                verticalAlignment: Text.AlignVCenter
+                                                                color: theme.text; font.pixelSize: 13; font.weight: Font.DemiBold
+                                                            }
+                                                            MouseArea {
+                                                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                                onClicked: dash.openWikiLink(token.modelData.reference)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1617,15 +1769,6 @@ PanelWindow {
             }
             // Heavy panes are created on first use and then hidden when closed.
             // They never block the initial workspace paint.
-            Loader {
-                id: notesLoader
-                Layout.fillWidth: true; Layout.fillHeight: true
-                active: dash.notesLoaded; asynchronous: true
-                visible: dash.notesOpen
-                opacity: dash.notesOpen ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic } }
-                sourceComponent: Component { NotesPane { store: dash.store } }
-            }
             Loader {
                 id: connectionsLoader
                 Layout.fillWidth: true; Layout.fillHeight: true

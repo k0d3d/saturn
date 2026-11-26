@@ -144,20 +144,39 @@ graph neighbours (tasks and notes), each clickable.
 
 ## Notepad card
 
-The daily note is the writing surface. It has one line of day navigation, the
-editor, then the notes dated that day as small pills — no section heading and no
-list rows. Word count and the `Ctrl+Enter → task` hint share one quiet line.
+Current shared hierarchy: all workspace cards use the same subdued surface.
+Accent is reserved for selection and meaningful state, not category fills.
+Decorative stacked-card shadows are removed. Expanded navigation is a compact,
+low-contrast list with 16px icons and 13px labels. Card headings are 18px.
+Date navigation uses one relative label and small unboxed chevrons; New note
+sits beside it. The editor uses 16px body text.
 
-Expanded, the card has three views, switched by `Write` and `All notes` tabs:
+New note and Edit open inside the expanded Notepad card. The standalone Notes
+destination is removed from the header; legacy open-notes commands route into
+Notepad. The editor suppresses library headings, search and archive tabs.
 
-- **Write** — the daily editor at 40% with today's pills and the notes board below.
-- **All notes** — the board takes the whole card.
-- **Note** — clicking any pill or card opens that note full-card, with `‹ All notes` to return.
+The expanded card has one home view: **Board**. It lists every active library
+note and dated daily note, across dates. Card dates are relative — `Today`,
+`Yesterday`, `3 days ago`, then a compact calendar date. Daily notes use relative
+titles too.
 
-Cards are tinted from a fixed six-colour palette keyed by note id, with date,
-title and a five-line preview. Wiki links (`[[Title]]`) are graph syntax: the
-reading view renders them as links, while previews strip the brackets. Clicking
-a link opens the matching task or note.
+`New note` is an action, not a tab. It opens a draft in the embedded editor for
+today. Clicking any card — library or daily — opens that note in the same
+embedded editor. There are no Write/Board tabs.
+
+From an editor, `‹ Board`, the close control, and Escape all return to Board.
+Escape on Board returns to the workspace. While a note is open, small chevrons
+browse to the previous or next note/date without going back to Board. Saving
+stays in the editor; leaving saves automatically.
+
+The daily writing surface is no longer a separate mode. Daily notes are cards
+like any other, edited in the shared editor with a date field. The collapsed
+card still shows the current day's writing and its linked-note pills, with the
+word count and `Ctrl+Enter → task` hint.
+
+Wiki references (`[[Title]]`) are graph syntax. Previews strip the brackets; the
+reading view shows them as legible, clickable pills that open the matching task
+or note.
 
 ## Open design questions
 
