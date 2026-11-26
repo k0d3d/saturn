@@ -6,6 +6,7 @@
 - Removed the compact/collapsed workspace and hover-to-open behavior; the bar now opens the full workspace directly.
 - Replaced filled button rows with text tabs, hover-only task actions, inline add fields and a clickable Focus timer dial.
 - Deferred heavy panes: Notes and Connections load on first open, Mail loads on first expansion, and the frost capture only runs while the workspace is visible.
+- Fixed the tint layer painting over the entire workspace; the backdrop is now below the cards, so text and surfaces keep their contrast.
 - The daily note now acts as a hub for library notes dated to that day, with a one-click `@Title` insertion that becomes a graph mention.
 - Added an optional frosted backdrop: one screencopy captured on open, blurred once, toggleable from the top bar.
 - Documented the visual contract, motion rules and performance budget in `UX.md`.

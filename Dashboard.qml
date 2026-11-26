@@ -259,6 +259,13 @@ PanelWindow {
         property string hint: ""
         signal toggled()
         implicitHeight: 180
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width, parent.height) - 20
+            height: width; radius: width / 2
+            color: "transparent"; border.width: 5
+            border.color: theme.alpha(theme.text, 0.18)
+        }
         Canvas {
             id: ring
             anchors.fill: parent

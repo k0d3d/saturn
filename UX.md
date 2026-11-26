@@ -87,6 +87,23 @@ open, not a live view. It keeps input latency predictable.
 - Measure open, expand/collapse, scroll and typing with frost on and off at the
   display frame budget (16.7 ms at 60 Hz, 8.3 ms at 120 Hz).
 
+## Open design questions
+
+Card interactions are being designed one card at a time. The current grid is a
+base, not a final component spec.
+
+- **Expanded Tasks right pane** — deliberately open. Candidates to evaluate:
+  selected task detail and body, related notes from the knowledge graph, a
+  day agenda, or a task board. Do not lock this to a generic detail pane yet.
+- **Notepad** — how much of the note body should stay visible versus writing
+  in a focused editor; whether day navigation should be a scrubber.
+- **Focus** — dial interaction beyond start/pause: drag to set duration, preset
+  memory, session history.
+- **Events** — inline capture versus a compact agenda; how much calendar
+  context belongs in the card.
+- **Mail** — summary card versus reading surface; which actions deserve direct
+  manipulation.
+
 ## Not in this pass
 
 - `@` autocomplete popup and mention chips in the notes editor.
