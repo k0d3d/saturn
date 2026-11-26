@@ -636,35 +636,39 @@ PanelWindow {
                                         wrapMode: Text.Wrap
                                         color: dash.selectedTask && dash.selectedTask.done ? theme.muted : theme.text
                                     }
-                                    RowLayout {
+                                    Item {
                                         Layout.fillWidth: true; Layout.maximumWidth: 760
                                         Layout.topMargin: 14
-                                        spacing: 10
+                                        implicitHeight: metaRow.implicitHeight
                                         visible: !!dash.selectedTask
-                                        Label {
-                                            text: Dates.dueLabel(dash.selectedTask ? dash.selectedTask.due : "", dash.store.today) || "No due date"
-                                            font.pixelSize: 12
-                                            color: dash.selectedTask && dash.selectedTask.due && !dash.selectedTask.done && dash.selectedTask.due < dash.store.today ? theme.urgent : theme.alpha(theme.text, 0.62)
-                                        }
-                                        Label {
-                                            visible: !!dash.selectedTask && !!dash.selectedTask.createdAt
-                                            text: "·"; font.pixelSize: 11; color: theme.alpha(theme.text, 0.28)
-                                        }
-                                        Label {
-                                            visible: !!dash.selectedTask && !!dash.selectedTask.createdAt
-                                            text: dash.selectedTask && dash.selectedTask.createdAt ? "Added " + Qt.formatDate(new Date(dash.selectedTask.createdAt), "d MMM") : ""
-                                            font.pixelSize: 12; color: theme.alpha(theme.text, 0.50)
-                                        }
-                                        Label {
-                                            visible: !!dash.selectedTask && (dash.selectedTask.tags || []).length > 0
-                                            text: "·"; font.pixelSize: 11; color: theme.alpha(theme.text, 0.28)
-                                        }
-                                        Repeater {
-                                            model: dash.selectedTask ? (dash.selectedTask.tags || []) : []
+                                        Row {
+                                            id: metaRow
+                                            spacing: 10
                                             Label {
-                                                required property var modelData
-                                                text: "#" + modelData
-                                                font.pixelSize: 12; color: theme.alpha(theme.text, 0.62)
+                                                text: Dates.dueLabel(dash.selectedTask ? dash.selectedTask.due : "", dash.store.today) || "No due date"
+                                                font.pixelSize: 12
+                                                color: dash.selectedTask && dash.selectedTask.due && !dash.selectedTask.done && dash.selectedTask.due < dash.store.today ? theme.urgent : theme.alpha(theme.text, 0.62)
+                                            }
+                                            Label {
+                                                visible: !!dash.selectedTask && !!dash.selectedTask.createdAt
+                                                text: "·"; font.pixelSize: 11; color: theme.alpha(theme.text, 0.28)
+                                            }
+                                            Label {
+                                                visible: !!dash.selectedTask && !!dash.selectedTask.createdAt
+                                                text: dash.selectedTask && dash.selectedTask.createdAt ? "Added " + Qt.formatDate(new Date(dash.selectedTask.createdAt), "d MMM") : ""
+                                                font.pixelSize: 12; color: theme.alpha(theme.text, 0.50)
+                                            }
+                                            Label {
+                                                visible: !!dash.selectedTask && (dash.selectedTask.tags || []).length > 0
+                                                text: "·"; font.pixelSize: 11; color: theme.alpha(theme.text, 0.28)
+                                            }
+                                            Repeater {
+                                                model: dash.selectedTask ? (dash.selectedTask.tags || []) : []
+                                                Label {
+                                                    required property var modelData
+                                                    text: "#" + modelData
+                                                    font.pixelSize: 12; color: theme.alpha(theme.text, 0.62)
+                                                }
                                             }
                                         }
                                     }
