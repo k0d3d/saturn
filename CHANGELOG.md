@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added a quiet card visual language: bounded volume bars, attention edge/dot, a session-local last-viewed tick, and short hover/view-switch/task feedback animations.
+- The daily note now acts as a hub for library notes dated to that day, with a one-click `@Title` insertion that becomes a graph mention.
+- Added an optional frosted backdrop: one screencopy captured on open, blurred once, toggleable from the top bar.
+- Documented the visual contract, motion rules and performance budget in `UX.md`.
+
 ## 0.8.0
 
 - Renamed the project to **Saturn** and the plugin id to `k0d3d.saturn`; `saturn` is the new command, with deprecated `omapulse` and `omaowl` aliases for one release.

@@ -24,6 +24,11 @@ Item {
             pane.query = store.notesQuery;
             searchField.text = store.notesQuery;
         }
+        function onNotesSelectionChanged() {
+            if (!store.notesSelection) return;
+            var item = store.searchNotes("", 100).find(n => n.id === store.notesSelection);
+            if (item) pane.select(item);
+        }
     }
 
     readonly property var results: {

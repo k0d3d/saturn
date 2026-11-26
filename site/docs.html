@@ -21,7 +21,7 @@
         ></a
       >
       <nav aria-label="Main navigation">
-        <a href="/">Home</a><a href="#notes">Notes</a><a href="#graph">Graph</a
+        <a href="/">Home</a><a href="#interface">Interface</a><a href="#notes">Notes</a><a href="#graph">Graph</a
         ><a href="https://github.com/k0d3d/saturn"
           >GitHub <span aria-hidden="true">↗</span></a
         >
@@ -36,6 +36,23 @@
         Saturn keeps your day in plain files. Tasks, notes and events live in a
         local JSON workspace, a Markdown mirror lives in Git, and a small SQLite
         graph remembers how everything relates. Nothing leaves the machine.
+      </p>
+
+      <h2 id="interface">Reading the workspace</h2>
+      <p>
+        Saturn's cards are meant to be understood at a glance. A short accent
+        tick marks the last view you opened; three small bars show a bounded
+        volume band rather than an exact count. A leading edge and a small dot
+        mean attention — calm for unread mail or work due today, urgent for an
+        overdue task. Volume and urgency are independent.
+      </p>
+      <p>
+        Hover and view-change motion lasts under 200 ms and only touches
+        borders, opacity and small controls. The frosted backdrop is a single
+        blurred snapshot taken when the panel opens, not a live capture; turn it
+        off from the top bar if you prefer an opaque panel. The full visual
+        contract is in
+        <a href="https://github.com/k0d3d/saturn/blob/main/UX.md">UX.md</a>.
       </p>
 
       <h2 id="notes">Notes</h2>

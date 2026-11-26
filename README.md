@@ -2,7 +2,7 @@
 
 **Your day, within reach.** A local-first workspace for Omarchy: tasks, focus, daily notes, calendar and mail.
 
-[Website & interactive preview](https://saturn.vercel.app/) · [Releases](https://github.com/k0d3d/saturn/releases) · [Report an issue](https://github.com/k0d3d/saturn/issues)
+[Website & interactive preview](https://saturn.vercel.app/) · [Visual language](UX.md) · [Releases](https://github.com/k0d3d/saturn/releases) · [Report an issue](https://github.com/k0d3d/saturn/issues)
 
 Saturn runs inside Omarchy's Quickshell desktop. Hover over its bar icon for a quick look, click to pin it, or right-click for the full workspace. It follows your current theme. An application-menu launcher opens the same native workspace. This is an Omarchy Linux plugin, not an Electron wrapper or a cross-platform standalone app.
 
@@ -63,6 +63,18 @@ All integrations are optional:
 | HEY | Install a compatible `hey` CLI and run `hey auth login` | New for You, mark read and Undo |
 
 Third-party services may require accounts or paid plans. No service subscription is included.
+
+## Interface
+
+Cards communicate state before you read them: a leading edge and dot mean
+attention, three short bars show a bounded volume band, and a small tick marks
+the last view you opened. Frost blurs the desktop behind the panel once on open
+and can be turned off from the top bar. See [UX.md](UX.md) for the full visual
+contract, motion rules and performance budget.
+
+The daily note is an index: library notes dated to the selected day appear as
+`@Title` rows beneath it. Click one to open it, or use its `@` button to insert
+an explicit mention into the daily note.
 
 ## Tasks
 

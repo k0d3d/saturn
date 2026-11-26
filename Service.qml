@@ -5,6 +5,7 @@ import Quickshell.Io
 import "Logic.js" as Logic
 import "Dates.js" as Dates
 import "Notes.js" as Notes
+import "Visual.js" as Visual
 
 Item {
     id: root
@@ -20,6 +21,8 @@ Item {
     property string error: ""
     property string notice: ""
     property string notesQuery: ""
+    // UI-local navigation target. It never touches workspace.json.
+    property string notesSelection: ""
     // Canonical serialization the shell last wrote, used to ignore its own file events.
     property string lastPersisted: ""
     property double now: Date.now()
@@ -127,8 +130,9 @@ Item {
         var destination=allowed[mailSource].test(target || "") ? target : homes[mailSource];
         Quickshell.execDetached(mailSource === "hey" ? ["omarchy","launch","webapp",destination] : ["xdg-open",destination]);
     }
-    function showPulse(view) {
+    function showPulse(view, target) {
         if(view === "close") { eachWindow(w => { w.commandOpen=false; w.dashboardOpen=false; w.close(); }); return; }
+        notesSelection = target || "";
         eachWindow(w => {
             w.workspacePanel.connectionsOpen=false; w.workspacePanel.insights=false; w.workspacePanel.notesOpen=false;
             if(view === "notes") w.workspacePanel.notesOpen=true;
@@ -285,6 +289,9 @@ Item {
     function searchNotes(query, limit) {
         return Notes.search(workspace, query || "", limit || 80);
     }
+    // Library notes dated to a day. Used by the daily-note hub; derived, never
+    // persisted, so the graph and vault remain the sources of truth.
+    function notesForDay(day) { return Visual.forDay(workspace, day); }
 
     function tasksCommand(command, first, second) {
         var cmd = command || "list";

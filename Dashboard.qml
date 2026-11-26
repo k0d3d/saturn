@@ -2,11 +2,13 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
 import "Logic.js" as Logic
 import "Dates.js" as Dates
+import "Visual.js" as Visual
 
 PanelWindow {
     id: dash
@@ -27,6 +29,16 @@ PanelWindow {
     property bool connectionsOpen: false
     onConnectionsOpenChanged: if (connectionsOpen) { notesOpen=false; insights=false; }
     onInsightsChanged: if (insights) { notesOpen=false; connectionsOpen=false; }
+    // UI-local memory only: a quiet bookmark on the last view you opened.
+    // It resets when the shell restarts and never writes to the workspace.
+    property string lastCard: "tasks"
+    property bool frosted: true
+    property bool frostReady: false
+    readonly property int taskAttention: Visual.attention(dash.store.tasks, dash.store.today, 0).level
+    readonly property var dayNotes: {
+        store.revision;
+        return store.notesForDay(store.noteDay);
+    }
     property string calendarDate: store.calendarToday
     readonly property int calendarIndex: store.agendaDays.findIndex(d => d.date === dash.calendarDate)
     readonly property var calendarDay: store.agendaDays[Math.max(0, calendarIndex)] || null
@@ -57,10 +69,44 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: visible ? (compact ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive) : WlrKeyboardFocus.None
     color: "transparent"
-    onVisibleChanged: if (visible) { awaitingEntry = compact; page.forceActiveFocus(); store.mail.refreshIfStale(); if(store.calendarSource === "google") store.googleCalendar.refreshIfStale(); if (compact && !pinned) leaveTimer.restart(); }
+    onVisibleChanged: {
+        if (!visible) { frostReady = false; frostLoader.active = false; return; }
+        awaitingEntry = compact; page.forceActiveFocus(); store.mail.refreshIfStale();
+        if(store.calendarSource === "google") store.googleCalendar.refreshIfStale();
+        if (compact && !pinned) leaveTimer.restart();
+        frostTimer.restart();
+    }
+    onFrostedChanged: if (frosted && visible) frostTimer.restart(); else frostLoader.active = false
+    // Capture one still frame when the panel opens. No pointer-following loop.
+    Timer { id: frostTimer; interval: 60; onTriggered: if (dash.frosted && dash.visible) frostLoader.active = true }
     onEditingChanged: if (!editing && !hovered) leaveTimer.restart()
     Timer { id: leaveTimer; interval: dash.awaitingEntry ? 1200 : 700; onTriggered: if (dash.compact && dash.visible && !dash.hovered && !dash.pinned && !dash.editing) dash.close() }
-    Rectangle { anchors.fill: parent; color: theme.background; radius: 0; border.width: dash.compact ? 1 : 0; border.color: theme.border }
+    // Frosted backdrop: one still screencopy, blurred once, never per frame.
+    // It is opt-out with the Frost button and stays opaque until capture lands.
+    Loader {
+        id: frostLoader; active: false; anchors.fill: parent; z: 0
+        sourceComponent: Component {
+            Item {
+                ScreencopyView {
+                    id: frostShot; anchors.fill: parent; visible: false; live: false
+                    captureSource: dash.screen
+                    onHasContentChanged: if (hasContent) dash.frostReady = true
+                }
+                MultiEffect {
+                    anchors.fill: parent; visible: frostShot.hasContent
+                    source: frostShot; autoPaddingEnabled: false
+                    blurEnabled: true; blur: 0.9; blurMax: 48; blurMultiplier: 1
+                }
+                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.34 }
+            }
+        }
+    }
+    Rectangle {
+        anchors.fill: parent; z: 1
+        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.80) : theme.background
+        radius: 0; border.width: dash.compact ? 1 : 0; border.color: theme.border
+        Behavior on color { ColorAnimation { duration: 160 } }
+    }
     function close() { store.flush(); dismissed(); }
     function moveDay(offset) {
         var index = Math.max(0, calendarIndex) + offset;
@@ -87,9 +133,56 @@ PanelWindow {
         background: Rectangle { radius: 3; color: action.dark ? (action.selected ? theme.accent : action.hovered ? theme.border : theme.raised) : action.selected ? theme.accent : action.hovered ? theme.hover : theme.raised; opacity: action.enabled ? 1 : 0.4 }
         contentItem: Label { id: label; text: action.text; font.pixelSize: 14; font.weight: Font.Medium; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: action.dark ? (action.selected ? theme.background : theme.text) : action.selected ? theme.background : dash.textColor }
     }
+    // One card language: a leading edge for urgency, a bookmark for the last
+    // visited view, bounded stack bars for volume. Each cue has one meaning.
     component Card: Rectangle {
-        radius: 0
+        id: card
+        property string role: ""
+        property int volume: 0
+        property int attention: 0
+        property bool active: false
+        property bool bookmarked: card.role && card.role === dash.lastCard
+        property bool hovered: cardHover.hovered
+        radius: 4
+        border.width: 1
+        border.color: card.active ? theme.accent : card.hovered ? theme.alpha(theme.text, 0.28) : theme.alpha(theme.text, 0.07)
+        Behavior on border.color { ColorAnimation { duration: 160 } }
+        HoverHandler { id: cardHover; cursorShape: Qt.ArrowCursor }
+
         Rectangle { anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top; anchors.topMargin: 11; width: 32; height: 4; radius: 2; color: theme.alpha(theme.text, 0.18) }
+        Rectangle {
+            anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+            width: 3; z: 2
+            color: card.attention === 2 ? theme.urgent : theme.accent
+            opacity: card.attention > 0 ? (card.hovered ? 0.95 : 0.7) : 0
+            Behavior on opacity { NumberAnimation { duration: 160 } }
+        }
+        Rectangle {
+            anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 12; z: 2
+            width: 8; height: 8; radius: 4
+            color: card.attention === 2 ? theme.urgent : theme.accent
+            visible: card.attention > 0
+            opacity: card.hovered ? 1 : 0.75
+        }
+        Rectangle {
+            anchors.left: parent.left; anchors.bottom: parent.bottom
+            anchors.leftMargin: 8; anchors.bottomMargin: 10; z: 2
+            width: 3; height: 14; radius: 1.5
+            color: theme.accent; opacity: 0.8
+            visible: card.bookmarked
+        }
+        Row {
+            anchors.right: parent.right; anchors.bottom: parent.bottom
+            anchors.rightMargin: 12; anchors.bottomMargin: 12; spacing: 3; z: 2
+            Repeater {
+                model: 3
+                Rectangle {
+                    width: 8; height: 3; radius: 1.5; color: theme.text
+                    opacity: index < card.volume ? (card.hovered ? 0.8 : 0.62) : 0.12
+                    Behavior on opacity { NumberAnimation { duration: 160 } }
+                }
+            }
+        }
     }
     component Entry: TextField {
         color: dash.textColor; font.family: theme.font; font.pixelSize: 16
@@ -117,18 +210,23 @@ PanelWindow {
                     Label { text: "A little room for your day."; color: theme.muted; font.pixelSize: 13 }
                 }
                 Item { Layout.fillWidth: true }
-                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; } }
-                Action { text: "Notes"; dark: true; selected: dash.notesOpen; onClicked: dash.notesOpen=true }
-                Action { text: "Insights"; dark: true; selected: dash.insights; onClicked: { dash.insights = true; dash.connectionsOpen = false; } }
-                Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.connectionsOpen=true; dash.insights=false; } }
+                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; dash.lastCard = "tasks"; } }
+                Action { text: "Notes"; dark: true; selected: dash.notesOpen; onClicked: { store.notesSelection = ""; dash.notesOpen = true; dash.lastCard = "notes"; } }
+                Action { text: "Insights"; dark: true; selected: dash.insights; onClicked: { dash.insights = true; dash.connectionsOpen = false; dash.lastCard = "insights"; } }
+                Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.connectionsOpen = true; dash.insights = false; dash.lastCard = "connections"; } }
+                Action { text: dash.frosted ? "Frost on" : "Frost off"; dark: true; selected: dash.frosted; onClicked: dash.frosted = !dash.frosted; ToolTip.visible: hovered; ToolTip.text: "Blur the desktop behind the panel" }
                 Action { visible: dash.compact; text: dash.pinned ? "Pinned" : "Pin"; dark: true; selected: dash.pinned; onClicked: { dash.pinned = !dash.pinned; if (!dash.pinned && !dash.hovered) leaveTimer.restart(); } }
                 Action { text: dash.compact ? "⤢  Full screen" : "↙  Compact"; dark: true; onClicked: dash.compact ? dash.expandRequested() : dash.close() }
                 Action { text: "×"; dark: true; onClicked: dash.close(); Accessible.name: "Close full screen" }
             }
             RowLayout {
+                id: workspaceRow
                 visible: !dash.insights && !dash.connectionsOpen && !dash.notesOpen
+                onVisibleChanged: if (visible) { opacity = 0; workspaceReveal.start(); }
                 Layout.fillWidth: true; Layout.fillHeight: true; spacing: 18
+                NumberAnimation { id: workspaceReveal; target: workspaceRow; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
                 Card {
+                    role: "tasks"; volume: Visual.volume(dash.taskRows.length); attention: dash.taskAttention
                     color: theme.tasks; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 420
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 12
@@ -163,9 +261,14 @@ PanelWindow {
                                     id: taskContent
                                     anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 10
                                     Action {
+                                        id: taskCheck
                                         text: taskRow.task.done ? "✓" : "○"; implicitWidth: 34
-                                        onClicked: dash.store.toggleTask(taskRow.task.id)
+                                        onClicked: { dash.store.toggleTask(taskRow.task.id); taskCheckBounce.start(); }
                                         Accessible.name: taskRow.task.done ? "Reopen task" : "Complete task"
+                                        NumberAnimation {
+                                            id: taskCheckBounce; target: taskCheck; property: "scale"
+                                            from: 0.82; to: 1; duration: 190; easing.type: Easing.OutBack
+                                        }
                                     }
                                     ColumnLayout {
                                         Layout.fillWidth: true; spacing: 4
@@ -217,6 +320,7 @@ PanelWindow {
                     }
                 }
                 Card {
+                    role: "focus"
                     color: theme.focus; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 260
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: dash.compact ? 9 : 20
@@ -246,6 +350,7 @@ PanelWindow {
                     }
                 }
                 Card {
+                    role: "notes"; volume: Visual.volume(dash.dayNotes.length)
                     color: theme.notes; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 330
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 16
@@ -274,11 +379,55 @@ PanelWindow {
                                 }
                             }
                         }
+                        // The daily note is the index. Library notes dated to this day
+                        // appear here; the @ button writes an explicit graph mention.
+                        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.alpha(theme.text, 0.18) }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label { Layout.fillWidth: true; text: "Today’s notes"; font.pixelSize: 13; font.weight: Font.DemiBold }
+                            Label { text: dash.dayNotes.length ? dash.dayNotes.length + " linked" : "empty"; font.pixelSize: 11; opacity: 0.65 }
+                        }
+                        ListView {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.min(132, dash.dayNotes.length * 44)
+                            Layout.maximumHeight: 132
+                            clip: true; spacing: 4
+                            model: dash.dayNotes
+                            ScrollBar.vertical: ScrollBar {}
+                            delegate: Item {
+                                id: hubRow
+                                required property var modelData
+                                width: ListView.view.width; height: 44
+                                Rectangle { anchors.fill: parent; radius: 3; color: hubArea.hovered ? theme.hover : theme.raised; opacity: hubArea.hovered ? 0.85 : 0.45 }
+                                RowLayout {
+                                    anchors.fill: parent; anchors.margins: 8; spacing: 8
+                                    Label { Layout.fillWidth: true; text: "@" + hubRow.modelData.title; font.pixelSize: 13; color: theme.text; elide: Text.ElideRight }
+                                    AbstractButton {
+                                        z: 2; Layout.preferredWidth: 30; Layout.preferredHeight: 28
+                                        hoverEnabled: true; focusPolicy: Qt.NoFocus
+                                        Accessible.name: "Link " + hubRow.modelData.title + " in the daily note"
+                                        ToolTip.visible: hovered; ToolTip.text: "Insert @mention in today’s note"
+                                        onClicked: {
+                                            notes.insert(notes.cursorPosition, "@" + hubRow.modelData.title + " ");
+                                            dash.store.setNote(notes.text);
+                                        }
+                                        contentItem: Label { text: "@"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: theme.accent; font.pixelSize: 14 }
+                                        background: Rectangle { radius: 3; color: parent.hovered ? theme.accent : "transparent" }
+                                    }
+                                }
+                                MouseArea {
+                                    id: hubArea; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: { dash.lastCard = "notes"; dash.store.showPulse("notes", hubRow.modelData.id); }
+                                }
+                            }
+                            Label { anchors.centerIn: parent; width: parent.width; visible: parent.count === 0; text: "No notes dated today yet."; color: theme.muted; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
+                        }
                         Label { text: (notes.text.trim() ? notes.text.trim().split(/\s+/).length : 0) + " words · Saved locally"; font.pixelSize: 12; opacity: 0.65 }
                         Label { text: "Ctrl+Enter → task"; font.pixelSize: 11; opacity: 0.5 }
                     }
                 }
                 Card {
+                    role: "events"; volume: Visual.volume(dash.calendarDay ? dash.calendarDay.events.length : 0)
                     color: theme.events; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 350
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: 16
@@ -338,14 +487,29 @@ PanelWindow {
                     }
                 }
                 Card {
+                    role: "mail"; volume: Visual.volume(dash.store.newMail.length)
+                    attention: dash.store.newMail.length ? 1 : 0
                     color: theme.mail; Layout.fillHeight: true; Layout.fillWidth: true; Layout.preferredWidth: 340
                     HeyMail { anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; store: dash.store }
                 }
             }
-            NotesPane { id: notesPane; store: dash.store; visible: dash.notesOpen; Layout.fillWidth: true; Layout.fillHeight: true }
-            ConnectionsPane { store: dash.store; visible: dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true }
+            NotesPane {
+                id: notesPane; store: dash.store; visible: dash.notesOpen
+                onVisibleChanged: if (visible) { opacity = 0; notesReveal.start(); }
+                NumberAnimation { id: notesReveal; target: notesPane; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                Layout.fillWidth: true; Layout.fillHeight: true
+            }
+            ConnectionsPane {
+                id: connectionsPane; store: dash.store; visible: dash.connectionsOpen
+                onVisibleChanged: if (visible) { opacity = 0; connectionsReveal.start(); }
+                NumberAnimation { id: connectionsReveal; target: connectionsPane; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                Layout.fillWidth: true; Layout.fillHeight: true
+            }
             Rectangle {
-                visible: dash.insights && !dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.focus; radius: 0
+                id: insightsPane
+                visible: dash.insights && !dash.connectionsOpen; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.focus; radius: 4
+                onVisibleChanged: if (visible) { opacity = 0; insightsReveal.start(); }
+                NumberAnimation { id: insightsReveal; target: insightsPane; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
                 ColumnLayout {
                     anchors.fill: parent; anchors.margins: 48; spacing: 24
                     Label { text: "The work you put in"; font.pixelSize: 34; font.weight: Font.DemiBold }
