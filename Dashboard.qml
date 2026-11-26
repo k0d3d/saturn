@@ -97,13 +97,13 @@ PanelWindow {
                     source: frostShot; autoPaddingEnabled: false
                     blurEnabled: true; blur: 0.9; blurMax: 48; blurMultiplier: 1
                 }
-                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.34 }
+                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.18 }
             }
         }
     }
     Rectangle {
         anchors.fill: parent; z: 1
-        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.80) : theme.background
+        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.74) : theme.background
         radius: 0; border.width: dash.compact ? 1 : 0; border.color: theme.border
         Behavior on color { ColorAnimation { duration: 160 } }
     }
