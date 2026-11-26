@@ -73,7 +73,7 @@ PanelWindow {
     WlrLayershell.keyboardFocus: visible ? (compact ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive) : WlrKeyboardFocus.None
     color: "transparent"
     onVisibleChanged: {
-        if (!visible) { frostReady = false; frostLoader.active = false; return; }
+        if (!visible) { frostReady = false; frostLoader.active = false; focusedCard = ""; return; }
         awaitingEntry = compact; page.forceActiveFocus(); store.mail.refreshIfStale();
         if(store.calendarSource === "google") store.googleCalendar.refreshIfStale();
         if (compact && !pinned) leaveTimer.restart();
@@ -100,13 +100,13 @@ PanelWindow {
                     source: frostShot; autoPaddingEnabled: false
                     blurEnabled: true; blur: 0.9; blurMax: 48; blurMultiplier: 1
                 }
-                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.12 }
+                Rectangle { anchors.fill: parent; color: theme.background; opacity: 0.18 }
             }
         }
     }
     Rectangle {
         anchors.fill: parent; z: 1
-        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.60) : theme.background
+        color: dash.frosted && dash.frostReady ? theme.alpha(theme.background, 0.66) : theme.background
         radius: 0
         Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
@@ -251,10 +251,10 @@ PanelWindow {
                     Label { text: "A little room for your day."; color: theme.muted; font.pixelSize: 13 }
                 }
                 Item { Layout.fillWidth: true }
-                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; dash.lastCard = "tasks"; } }
-                Action { text: "Notes"; dark: true; selected: dash.notesOpen; onClicked: { store.notesSelection = ""; dash.notesOpen = true; dash.lastCard = "notes"; } }
-                Action { text: "Insights"; dark: true; selected: dash.insights; onClicked: { dash.insights = true; dash.connectionsOpen = false; dash.lastCard = "insights"; } }
-                Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.connectionsOpen = true; dash.insights = false; dash.lastCard = "connections"; } }
+                Action { text: "Workspace"; dark: true; selected: !dash.insights && !dash.connectionsOpen && !dash.notesOpen; onClicked: { dash.focusedCard = ""; dash.notesOpen = false; dash.insights = false; dash.connectionsOpen = false; dash.lastCard = "tasks"; } }
+                Action { text: "Notes"; dark: true; selected: dash.notesOpen; onClicked: { dash.focusedCard = ""; store.notesSelection = ""; dash.notesOpen = true; dash.lastCard = "notes"; } }
+                Action { text: "Insights"; dark: true; selected: dash.insights; onClicked: { dash.focusedCard = ""; dash.insights = true; dash.connectionsOpen = false; dash.lastCard = "insights"; } }
+                Action { text: "Connections"; dark: true; selected: dash.connectionsOpen; onClicked: { dash.focusedCard = ""; dash.connectionsOpen = true; dash.insights = false; dash.lastCard = "connections"; } }
                 Action { text: dash.frosted ? "Frost on" : "Frost off"; dark: true; selected: dash.frosted; onClicked: dash.frosted = !dash.frosted; ToolTip.visible: hovered; ToolTip.text: "Blur the desktop behind the panel" }
                 Action { text: "×"; dark: true; onClicked: dash.close(); Accessible.name: "Close workspace" }
             }

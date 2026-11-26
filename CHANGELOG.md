@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Added a quiet card visual language: bounded volume bars, attention edge/dot, a session-local last-viewed tick, and short hover/view-switch/task feedback animations.
+- Added a fullscreen, borderless card workspace: asymmetric five-card grid, exposed stack layers for volume, attention dot, session-local last-viewed tick, and animated expand/collapse focus.
+- Removed the compact/collapsed workspace and hover-to-open behavior; the bar now opens the full workspace directly.
 - The daily note now acts as a hub for library notes dated to that day, with a one-click `@Title` insertion that becomes a graph mention.
 - Added an optional frosted backdrop: one screencopy captured on open, blurred once, toggleable from the top bar.
 - Documented the visual contract, motion rules and performance budget in `UX.md`.

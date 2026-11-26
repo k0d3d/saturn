@@ -39,7 +39,7 @@ Upgrading from Oma Pulse (`kosta.omaowl`): remove the old id with `omarchy plugi
 
 ### Keyboard shortcut
 
-Bind `saturn command` in your Hyprland bindings using a key you choose. Existing Super+N bindings from the local prototype continue to work; a fresh install does not claim that shortcut. `saturn dashboard` opens full screen; Escape returns to the compact workspace.
+Bind `saturn command` in your Hyprland bindings using a key you choose. Existing Super+N bindings from the local prototype continue to work; a fresh install does not claim that shortcut. `saturn dashboard` opens the full workspace; Escape closes it, or returns from an expanded card first.
 
 On this workstation, **Super+Alt+N** opens the full dashboard. Its binding is
 `o.bind("SUPER + ALT + N", "Saturn full dashboard", "saturn dashboard")`.
@@ -66,11 +66,14 @@ Third-party services may require accounts or paid plans. No service subscription
 
 ## Interface
 
-Cards communicate state before you read them: a leading edge and dot mean
-attention, three short bars show a bounded volume band, and a small tick marks
-the last view you opened. Frost blurs the desktop behind the panel once on open
-and can be turned off from the top bar. See [UX.md](UX.md) for the full visual
-contract, motion rules and performance budget.
+Saturn is a single fullscreen, borderless card workspace: Tasks on the tall
+left, Notepad and Focus in the middle, Events and Mail on the right. A dot means
+attention, exposed layers behind a card show a bounded volume band, and a small
+tick marks the last view you opened. Hover `⤢` or press `1`–`5` to expand a
+card; `Esc` or `0` returns to the grid. Frost blurs the desktop behind the
+workspace once on open and can be turned off from the top bar. See
+[UX.md](UX.md) for the full visual contract, motion rules and performance
+budget.
 
 The daily note is an index: library notes dated to the selected day appear as
 `@Title` rows beneath it. Click one to open it, or use its `@` button to insert
@@ -139,8 +142,9 @@ Up to 50 recent Imbox entries are loaded; full mail remains available through **
 
 ## Theme
 
-All surfaces, text, accent colors, borders, and fonts bind to Omarchy’s live theme. Cards
-use subtle theme tints, and the workspace, command bar, and focus notch have square corners.
+All surfaces, text, accent colors and fonts bind to Omarchy’s live theme. Cards
+are borderless and use theme-tinted surfaces; the workspace, command bar and
+focus notch have square corners.
 
 ## Storage
 

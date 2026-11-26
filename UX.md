@@ -1,75 +1,85 @@
 # Saturn's visual language
 
-Saturn's workspace is a grid of quiet cards. The layout is deliberately stable:
-cards keep their positions so you build spatial memory. The surfaces carry the
-state. This document is the contract for the first UI/UX pass — Tasks and the
-daily-note hub.
+Saturn is one fullscreen workspace. There is no collapsed or pinned panel:
+the bar opens the same five-card grid on every display, and each card can
+expand to fill that workspace.
+
+The grid is deliberately asymmetric and stable. Tasks take the tall left
+column; Notepad and Focus share the middle; Events and Mail share the right.
+Cards do not reorder themselves when counts change. Narrow widths keep the same
+slots in a two-column arrangement and let each card scroll internally.
 
 ## One cue, one meaning
 
 | Cue | Meaning | Where it appears |
 | --- | --- | --- |
-| Leading edge on the left | Needs attention. Accent for unread mail or work due today; urgent colour for overdue tasks. | Tasks, mail |
-| Small dot, top right | Same attention state, visible even when the edge is out of view. | Tasks, mail |
-| Three short bars, bottom right | Volume band: 0, 1–2, 3–7, or 8+ items. Never one bar per item. | Tasks, notes, events, mail |
-| Short accent tick, bottom left | The last view you opened. Session-local; clears on shell restart. | Whichever card you last used |
-| Thin border lift on hover | Interactive surface, not importance. No layout shift. | Every card |
+| Exposed layers behind a card | Volume band: 1–2, 3–7, or 8+ items. Never one layer per item. | Tasks, notes, events, mail |
+| Small dot, top-left | Needs attention. Accent for unread mail or work due today; urgent colour for overdue tasks. | Tasks, mail |
+| Short accent tick, bottom-left | The last view you opened. Session-local; clears on shell restart. | Whichever card you last used |
+| Surface lift on hover | Interactive surface, not importance. Only the stack and highlight move. | Every card |
+| `⤢` / `×` control | Expands that card to the full workspace, or returns to the grid. | Every card |
 
-Volume and urgency are independent. A card can hold many notes and be calm, or
-hold one overdue task and need attention.
+Cards are borderless. Separation comes from solid surface contrast, spacing and
+the exposed stack layers — not outlines. Volume and urgency are independent: a
+card can hold many notes and be calm, or hold one overdue task and need
+attention.
 
-The pure rules live in `Visual.js`. `volume()`, `attention()` and `forDay()` are
-unit tested in `tests/visual.test.cjs` and used by QML through a single import.
+The pure rules live in `Visual.js`. `grid()`, `volume()`, `attention()` and
+`forDay()` are unit tested in `tests/visual.test.cjs`. `grid()` returns
+non-overlapping rectangles that fit the viewport at desktop and narrow widths.
 `Service.qml` exposes `notesForDay()` as a derived, never-persisted query.
 
-## The daily-note hub
+## Expanding a card
 
-The date-keyed daily note stays the master note. Library notes with the same
-`date` appear beneath it as `@Title` rows. Click a row to open that note; click
-the small `@` button to insert an explicit `@Title` mention into the daily
-note. That mention becomes an edge the next time a graph command refreshes.
+Hover a card and use `⤢`, or press `1`–`5` anywhere in the workspace:
 
-Nothing is inserted silently. The hub is an index; you decide when a note
-becomes a graph connection. Adding a note with a date is already supported by
-`notesV2`, so no schema change was needed.
+1. Tasks
+2. Notepad
+3. Focus
+4. Events
+5. Mail
+
+The selected card animates from its grid slot to the full workspace over
+220 ms; the other cards fade out. `Esc`, `0` or `×` returns to the same grid,
+preserving spatial memory. A card's controls never move during hover; only
+the surface and its stack are animated.
+
+The daily note is still the hub. Library notes dated to the selected day appear
+beneath it as `@Title` rows. Click a row to open it, or use its `@` button to
+insert an explicit mention into the daily note. Nothing is inserted silently.
 
 ## Motion
 
-- Card borders and state changes animate over 160 ms using colour/opacity only.
-- Switching views fades the incoming pane in over 200 ms; the outgoing pane is
-  removed immediately, so no input waits on a transition.
+- Expanding or collapsing a card animates its position and size over 220 ms.
+- Stack layers settle by 3 px on hover over 140 ms.
+- View changes fade the incoming pane in over 180 ms.
 - Completing a task gives a 190 ms bounce on the check control. Completed work
-  stays visible, as before.
-- No pointer-following, parallax or tilt loops. Buttons and text never move.
-- All animations are short, interruptible, and use transform/opacity or colour.
-
-A reduced-motion setting is deliberately not added in this pass: the current
-durations are short and non-essential, but this should be revisited if motion
-is extended.
+  stays visible.
+- Durations go through `Style.duration()`, so Omarchy's animation toggle turns
+  them off. No pointer-following, parallax or continuous tilt loops.
 
 ## Frosted backdrop
 
 Frost is on by default and can be toggled with the **Frost** button. It uses a
 single `ScreencopyView` still plus `QtQuick.Effects.MultiEffect`, captured once
-when the panel opens. There is no live screen capture loop. Until the capture
-lands, the panel stays opaque, so text never flashes against an unprepared
-backdrop. Turning frost off restores a fully opaque panel and releases the
-effect immediately.
+when the workspace opens. There is no live screen capture loop. Until the
+capture lands, the workspace stays opaque, so text never flashes against an
+unprepared backdrop.
 
 Why a still instead of compositor blur: Saturn is a layer-shell panel, and the
 screencopy route works across the compositors Omarchy supports without editing
 Hyprland config. The trade-off is that the blurred desktop is a snapshot from
-panel open, not a live view. It was chosen to keep input latency predictable.
+open, not a live view. It keeps input latency predictable.
 
 ## Performance budget
 
-- One blur effect, active only while the panel is visible.
-- No per-frame JavaScript, no perpetual animations, no per-item stack layers.
-- Volume is recalculated from existing arrays when the store revision changes.
+- One blur effect, active only while the workspace is visible.
+- No per-frame JavaScript, no perpetual animations, and at most three stack
+  layers per card.
+- Volume and attention are recalculated from existing arrays on store changes.
 - Long lists remain `ListView`-based and virtualised.
-- Measure open, view switch, scroll and typing with frost on and off in both
-  compact and full-screen modes. Target the display frame budget (16.7 ms at
-  60 Hz, 8.3 ms at 120 Hz) and keep click-to-response immediate.
+- Measure open, expand/collapse, scroll and typing with frost on and off at the
+  display frame budget (16.7 ms at 60 Hz, 8.3 ms at 120 Hz).
 
 ## Not in this pass
 
