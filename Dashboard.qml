@@ -375,11 +375,11 @@ PanelWindow {
                     z: dash.focusedCard === "focus" ? 10 : 0
                     enabled: !dash.focusedCard || dash.focusedCard === "focus"
                     ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 35; spacing: dash.compact ? 9 : 20
+                        anchors.fill: parent; anchors.margins: 24; anchors.topMargin: 30; spacing: 10
                         Label { text: "Focus"; font.pixelSize: 22; font.weight: Font.DemiBold }
-                        Label { Layout.fillWidth: true; text: dash.store.focusState.title; wrapMode: Text.Wrap; maximumLineCount: 3; font.pixelSize: 17; opacity: 0.75 }
+                        Label { Layout.fillWidth: true; text: dash.store.focusState.title; wrapMode: Text.Wrap; maximumLineCount: 2; font.pixelSize: 16; opacity: 0.75 }
                         Item { Layout.fillHeight: true }
-                        Label { Layout.fillWidth: true; text: dash.store.timerText; horizontalAlignment: Text.AlignHCenter; font.family: "monospace"; font.pixelSize: Math.min(57, parent.width / 5); font.letterSpacing: 1 }
+                        Label { Layout.fillWidth: true; text: dash.store.timerText; horizontalAlignment: Text.AlignHCenter; font.family: "monospace"; font.pixelSize: Math.min(54, parent.width / 5); font.letterSpacing: 1 }
                         Label { Layout.alignment: Qt.AlignHCenter; text: dash.store.focusState.running ? "One thing at a time." : "Ready when you are."; font.pixelSize: 12; opacity: 0.65 }
                         RowLayout {
                             Layout.alignment: Qt.AlignHCenter
@@ -391,11 +391,11 @@ PanelWindow {
                             Layout.fillWidth: true
                             Action { Layout.fillWidth: true; text: "25m"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 1500) }
                             Action { Layout.fillWidth: true; text: "50m"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 3000) }
+                            Action { Layout.fillWidth: true; text: "Stopwatch"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 0) }
                         }
-                        Action { Layout.fillWidth: true; text: "Stopwatch"; enabled: !dash.store.focusState.running; onClicked: dash.store.chooseFocus(dash.store.focusState.title, 0) }
                         RowLayout {
                             Layout.fillWidth: true
-                            Entry { id: minutesInput; Layout.fillWidth: true; implicitWidth: 65; implicitHeight: 38; placeholderText: "Minutes"; maximumLength: 3; validator: IntValidator { bottom: 1; top: 999 } }
+                            Entry { id: minutesInput; Layout.fillWidth: true; implicitWidth: 65; implicitHeight: 34; placeholderText: "Minutes"; maximumLength: 3; validator: IntValidator { bottom: 1; top: 999 } }
                             Action { text: "Set"; enabled: !dash.store.focusState.running && minutesInput.acceptableInput; onClicked: { dash.store.chooseFocus(dash.store.focusState.title, Number(minutesInput.text) * 60); page.forceActiveFocus(); } }
                         }
                         Label { Layout.alignment: Qt.AlignHCenter; text: dash.store.todayMinutes + " minutes focused today"; font.pixelSize: 12; opacity: 0.65 }
