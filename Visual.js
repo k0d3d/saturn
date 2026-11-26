@@ -24,12 +24,13 @@ function grid(width, height) {
     var left = Math.floor((w - 2 * gap) * 0.35);
     var middle = Math.floor((w - 2 * gap) * 0.35);
     var right = w - left - middle - 2 * gap;
-    var split = h - 330 - gap;
+    var focusHeight = Math.min(500, Math.max(390, Math.floor(h * 0.46)));
+    var split = h - focusHeight - gap;
     var sideSplit = Math.floor((h - gap) * 0.46);
     return {height:h, cards:{
         tasks:box(0, 0, left, h),
         notes:box(left + gap, 0, middle, split),
-        focus:box(left + gap, split + gap, middle, 330),
+        focus:box(left + gap, split + gap, middle, focusHeight),
         events:box(left + middle + 2 * gap, 0, right, sideSplit),
         mail:box(left + middle + 2 * gap, sideSplit + gap, right, h - sideSplit - gap)
     }};
