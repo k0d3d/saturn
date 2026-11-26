@@ -699,7 +699,7 @@ PanelWindow {
                             id: taskLeft
                             anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
                             width: (dash.focusedCard === "tasks" ? Math.round(parent.width * 0.40) : parent.width) - 48
-                            anchors.leftMargin: 24; anchors.topMargin: 35
+                            anchors.leftMargin: 24; anchors.topMargin: 35; anchors.bottomMargin: 24
                             spacing: 12
                         RowLayout {
                             Label {
