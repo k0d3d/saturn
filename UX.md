@@ -87,6 +87,22 @@ open, not a live view. It keeps input latency predictable.
 - Measure open, expand/collapse, scroll and typing with frost on and off at the
   display frame budget (16.7 ms at 60 Hz, 8.3 ms at 120 Hz).
 
+## Tasks card
+
+The task row is the interaction. A single click selects it; double-click the
+title or the due text to edit in place. `Enter` commits, `Esc` cancels. The check
+circle completes the task; focus and archive appear only while the row is
+hovered. There are no persistent per-row action buttons.
+
+Filters are text tabs with counts. The composer is two inline fields — task and
+optional due date — with `Enter` to add. `N` focuses the composer, even when the
+grid is showing.
+
+Expanded Tasks keeps the list on the left and opens a context rail on the right.
+The rail is deliberately provisional: it currently shows the selected task and
+focus/archive actions, with room for graph links, related notes or an agenda
+later.
+
 ## Open design questions
 
 Card interactions are being designed one card at a time. The current grid is a

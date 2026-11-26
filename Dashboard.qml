@@ -426,11 +426,13 @@ PanelWindow {
                             Item { Layout.fillWidth: true }
                             Label { text: dash.taskRows.length + (dash.taskView === "Completed" ? " done" : " to do"); font.pixelSize: 12; opacity: 0.7 }
                         }
-                        RowLayout {
-                            Layout.fillWidth: true; Layout.fillHeight: true; spacing: 18
+                        Item {
+                            Layout.fillWidth: true; Layout.fillHeight: true
                             ListView {
                                 id: taskList
-                                Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 4
+                                anchors.fill: parent
+                                anchors.rightMargin: dash.focusedCard === "tasks" ? 320 : 0
+                                clip: true; spacing: 4
                                 model: dash.taskRows
                                 ScrollBar.vertical: ScrollBar {}
                                 delegate: Item {
@@ -547,7 +549,8 @@ PanelWindow {
                             // task context now; graph, notes or agenda can move in.
                             ColumnLayout {
                                 visible: dash.focusedCard === "tasks"
-                                Layout.preferredWidth: 300; Layout.fillHeight: true; spacing: 10
+                                anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
+                                width: 300; spacing: 10
                                 Label { text: "Context"; font.pixelSize: 11; opacity: 0.6; font.letterSpacing: 1 }
                                 Label {
                                     Layout.fillWidth: true
