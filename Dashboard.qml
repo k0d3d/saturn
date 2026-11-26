@@ -622,7 +622,8 @@ PanelWindow {
                             }
                         }
                         Rectangle {
-                            Layout.fillWidth: true; implicitHeight: 88; radius: 6
+                            Layout.fillWidth: true; Layout.rightMargin: dash.focusedCard === "tasks" ? 380 : 0
+                            implicitHeight: 88; radius: 6
                             color: theme.alpha(theme.text, 0.035)
                             ColumnLayout {
                                 anchors.fill: parent; anchors.margins: 10; spacing: 0
