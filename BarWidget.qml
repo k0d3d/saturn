@@ -40,7 +40,7 @@ BarWidget {
         id: button
         anchors.fill: parent
         bar: root.bar
-        iconComponent: Component { Image { source: Qt.resolvedUrl("assets/saturn.png"); fillMode: Image.PreserveAspectFit } }
+        iconComponent: Component { Image { source: Qt.resolvedUrl("assets/saturn.png"); fillMode: Image.PreserveAspectFit; sourceSize.width: 40; sourceSize.height: 40; mipmap: true } }
         active: root.opened || root.focusRunning
         interactive: true
         tooltipText: (root.focusRunning ? "Saturn · " + (root.service ? root.service.timerText : root.remoteState.timer) : "Saturn · Tasks, focus, notes and calendar") + "\nClick for the full workspace"

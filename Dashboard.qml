@@ -575,7 +575,7 @@ PanelWindow {
             spacing: 25
             RowLayout {
                 Layout.fillWidth: true
-                Image { Layout.preferredWidth: 46; Layout.preferredHeight: 46; source: Qt.resolvedUrl("assets/saturn.png"); fillMode: Image.PreserveAspectFit }
+                Image { Layout.preferredWidth: 46; Layout.preferredHeight: 46; source: Qt.resolvedUrl("assets/saturn.png"); fillMode: Image.PreserveAspectFit; sourceSize.width: 92; sourceSize.height: 92; mipmap: true }
                 ColumnLayout {
                     spacing: 3
                     Label { text: "Saturn"; color: theme.text; font.pixelSize: 27; font.weight: Font.DemiBold }
