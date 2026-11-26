@@ -432,7 +432,7 @@ PanelWindow {
                             ListView {
                                 id: taskList
                                 anchors.fill: parent
-                                anchors.rightMargin: dash.focusedCard === "tasks" ? 380 : 0
+                                anchors.rightMargin: dash.focusedCard === "tasks" ? Math.round(parent.width * 0.40) + 20 : 0
                                 clip: true; spacing: 2; topMargin: 4; bottomMargin: 4
                                 model: dash.taskRows
                                 ScrollBar.vertical: ScrollBar {
@@ -446,7 +446,7 @@ PanelWindow {
                                     property var task: modelData
                                     property bool hovered: taskHover.hovered
                                     property bool selected: dash.selectedTaskId === task.id
-                                    width: ListView.view.width; height: 68
+                                    width: ListView.view.width; height: 56
                                     HoverHandler { id: taskHover }
                                     Rectangle {
                                         anchors.fill: parent; radius: 4
@@ -464,9 +464,9 @@ PanelWindow {
                                         anchors.verticalCenter: parent.verticalCenter; spacing: 12
                                         Item {
                                             id: taskCheck
-                                            Layout.preferredWidth: 28; Layout.preferredHeight: 28
+                                            Layout.preferredWidth: 26; Layout.preferredHeight: 26
                                             Rectangle {
-                                                anchors.centerIn: parent; width: 20; height: 20; radius: 10
+                                                anchors.centerIn: parent; width: 18; height: 18; radius: 9
                                                 color: taskRow.task.done ? theme.accent : "transparent"
                                                 border.width: 1
                                                 border.color: taskRow.task.done ? theme.accent : taskRow.hovered ? theme.alpha(theme.text, 0.55) : theme.alpha(theme.text, 0.28)
@@ -489,7 +489,7 @@ PanelWindow {
                                             }
                                         }
                                         ColumnLayout {
-                                            Layout.fillWidth: true; spacing: 2
+                                            Layout.fillWidth: true; spacing: 1
                                             TextField {
                                                 id: taskTitleField
                                                 visible: dash.editingTaskId === taskRow.task.id
@@ -497,14 +497,14 @@ PanelWindow {
                                                 onTextChanged: if (visible) dash.taskDraft = text
                                                 onAccepted: { dash.commitTask(); page.forceActiveFocus(); }
                                                 Keys.onEscapePressed: dash.editingTaskId = ""
-                                                color: theme.text; font.family: theme.font; font.pixelSize: 15
-                                                padding: 2; background: null; selectionColor: theme.accent; selectedTextColor: theme.background
+                                                color: theme.text; font.family: theme.font; font.pixelSize: 14
+                                                padding: 1; background: null; selectionColor: theme.accent; selectedTextColor: theme.background
                                             }
                                             Label {
                                                 visible: dash.editingTaskId !== taskRow.task.id
                                                 Layout.fillWidth: true; text: taskRow.task.title
                                                 maximumLineCount: 2; elide: Text.ElideRight
-                                                wrapMode: Text.Wrap; font.pixelSize: 15; lineHeight: 1.05
+                                                wrapMode: Text.Wrap; font.pixelSize: 14; lineHeight: 1.02
                                                 color: taskRow.task.done ? theme.muted : theme.text
                                                 font.strikeout: !!taskRow.task.done
                                                 MouseArea {
@@ -548,7 +548,7 @@ PanelWindow {
                                             }
                                         }
                                         RowLayout {
-                                            Layout.preferredWidth: 52; Layout.alignment: Qt.AlignVCenter
+                                            Layout.preferredWidth: 46; Layout.alignment: Qt.AlignVCenter
                                             spacing: 2; opacity: taskRow.hovered ? 1 : 0
                                             Behavior on opacity { NumberAnimation { duration: Style.duration(140) } }
                                             Glyph {
@@ -575,7 +575,7 @@ PanelWindow {
                             Item {
                                 visible: dash.focusedCard === "tasks"
                                 anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
-                                width: 360
+                                width: Math.round(parent.width * 0.40)
                                 Rectangle { anchors.fill: parent; radius: 6; color: theme.alpha(theme.text, 0.04) }
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 18; spacing: 10
@@ -622,19 +622,20 @@ PanelWindow {
                             }
                         }
                         Rectangle {
-                            Layout.fillWidth: true; Layout.rightMargin: dash.focusedCard === "tasks" ? 380 : 0
-                            implicitHeight: 88; radius: 6
+                            Layout.fillWidth: true
+                            Layout.rightMargin: dash.focusedCard === "tasks" ? Math.round(parent.width * 0.40) + 20 : 0
+                            implicitHeight: 76; radius: 6
                             color: theme.alpha(theme.text, 0.035)
                             ColumnLayout {
-                                anchors.fill: parent; anchors.margins: 10; spacing: 0
+                                anchors.fill: parent; anchors.margins: 8; spacing: 0
                                 Entry {
                                     id: taskInput; Layout.fillWidth: true; maximumLength: 500
-                                    implicitHeight: 34; padding: 2; background: null
+                                    implicitHeight: 30; padding: 1; background: null
                                     placeholderText: "＋  Add a task — try “tomorrow”"; onAccepted: dash.submitTask()
                                 }
                                 Entry {
                                     id: dueInput; Layout.fillWidth: true; maximumLength: 40
-                                    implicitHeight: 30; padding: 2; background: null; font.pixelSize: 13
+                                    implicitHeight: 26; padding: 1; background: null; font.pixelSize: 12
                                     placeholderText: "Due date (optional) · Enter to add"; onAccepted: dash.submitTask()
                                 }
                             }
