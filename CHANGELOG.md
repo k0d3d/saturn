@@ -17,6 +17,7 @@
 - A focused card now takes 84% of the workspace; the remaining strip is a `SWITCH` rail of the other cards as clickable mini cards with live captions.
 - Escape is a window shortcut, so it closes the workspace even when a text field has focus.
 - New Saturn brand mark generated with Recraft V3 SVG on Replicate; the shell uses a mipmapped PNG so the mark stays crisp at header size.
+- The header tagline now rotates through twenty aphorisms and attributed quotations about time, attention and work. Removed the last-viewed bookmark tick from card chrome.
 
 ## 0.8.0
 

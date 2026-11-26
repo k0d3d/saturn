@@ -15,7 +15,6 @@ slots in a two-column arrangement and let each card scroll internally.
 | --- | --- | --- |
 | Exposed layers behind a card | Volume band: 1–2, 3–7, or 8+ items. Never one layer per item. | Tasks, notes, events, mail |
 | Small dot, top-left | Needs attention. Accent for unread mail or work due today; urgent colour for overdue tasks. | Tasks, mail |
-| Short accent tick, bottom-left | The last view you opened. Session-local; clears on shell restart. | Whichever card you last used |
 | Surface lift on hover | Interactive surface, not importance. Only the stack and highlight move. | Every card |
 | `⤢` / `×` control | Expands that card to the full workspace, or returns to the grid. | Every card |
 
@@ -23,6 +22,10 @@ Cards are borderless. Separation comes from solid surface contrast, spacing and
 the exposed stack layers — not outlines. Volume and urgency are independent: a
 card can hold many notes and be calm, or hold one overdue task and need
 attention.
+
+The header subtitle rotates through twenty lines: original aphorisms and
+attributed quotations about time as an absolute constraint, attention and work.
+It opens on a random line and changes every nine seconds with a short fade.
 
 The pure rules live in `Visual.js`. `grid()`, `volume()`, `attention()` and
 `forDay()` are unit tested in `tests/visual.test.cjs`. `grid()` returns
