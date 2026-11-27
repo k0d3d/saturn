@@ -144,6 +144,14 @@ list to that tag, shows a clear control, and updates the tab counts; clicking it
 again clears the filter. Below the body, `CONNECTED` lists the selected task's
 graph neighbours (tasks and notes), each clickable.
 
+Tags arrive in two passes. Adding or renaming a task derives them instantly from
+the title's meaningful words — no syntax to learn, and the words stay in the
+title. An hourly timer asks OpenCode's DeepSeek model at configured hours to
+refine them against the existing tag vocabulary; curated tags are preserved.
+Those tags are the graph nodes, so refining them also redraws `CONNECTED`. The
+schedule and model live in `workspace.settings.llm` until a settings screen
+exists.
+
 ## Notepad card
 
 Current shared hierarchy: all workspace cards use the same subdued surface.

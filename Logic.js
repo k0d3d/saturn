@@ -9,10 +9,15 @@ function calendarOverlay(events, feed, source) {
         return !event.archived && !(source === "google" && event.source === "google" && remoteIds[event.externalId]);
     });
 }
+function defaultSettings() {
+    return {llm: {enabled: true, model: "opencode/deepseek-v4.1-flash-free",
+                  hours: [9, 18], batch: 20, timeout: 120, prompt: ""}};
+}
 function fresh() {
     return {version: 2, tasks: [], notes: {}, notesV2: [], events: [], activity: {},
             focus: {title: "Open focus", duration: 1500, elapsed: 0, running: false},
-            sync: {providers: {}, conflicts: [], tombstones: []}, insights: {}};
+            sync: {providers: {}, conflicts: [], tombstones: []}, insights: {},
+            settings: defaultSettings()};
 }
 function finite(value) {
     return typeof value === "number" && isFinite(value) && value >= 0;
@@ -33,6 +38,7 @@ function migrate(s) {
 
     var out = Object.assign({}, s);
     out.version = 2;
+    if (out.settings === undefined) out.settings = defaultSettings();
     out.tasks = tasks.map(function(raw) {
         if (!raw || typeof raw !== "object" || typeof raw.id !== "string" || typeof raw.title !== "string") throw new Error("Unrecognized task");
         var task = Object.assign({}, raw);

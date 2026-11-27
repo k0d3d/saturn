@@ -5,6 +5,8 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import "Logic.js" as Logic
 import "Dates.js" as Dates
+import "Tags.js" as Tags
+import "Settings.js" as Settings
 import "Notes.js" as Notes
 import "Visual.js" as Visual
 
@@ -80,6 +82,12 @@ Item {
     function setCalendarSource(source) {
         if (!ready || ["omacal","google","caldav","off"].indexOf(source)<0) return;
         workspace=Object.assign({},workspace,{calendarSource:source}); changed();
+    }
+    // No settings screen yet: scripts and agents configure the LLM pass here.
+    function setSettings(raw) {
+        if (!ready || error || !raw || typeof raw !== "object") return false;
+        workspace=Object.assign({},workspace,{settings: Settings.normalise(raw)}); changed();
+        return true;
     }
     onCalendarSourceChanged: {
         agenda=[]; agendaDays=[]; calendarClocks=({}); calendarTimezone=""; calendarToday=today;
@@ -207,7 +215,7 @@ Item {
             archived: false,
             archivedAt: 0,
             body: "",
-            tags: [],
+            tags: Tags.fromTitle(parsed.title),
             source: "local",
             externalId: null
         });
@@ -227,6 +235,7 @@ Item {
         var text = String(title || "").trim().slice(0, 500);
         if (!t || !ready || error || !text || text === t.title) return false;
         t.title = text;
+        t.tags = Tags.mergeTags(t.tags, text);
         t.updatedAt = Date.now();
         changed(true, true);
         return true;
@@ -418,6 +427,7 @@ Item {
             if (!Logic.shouldAdopt(incoming, root.lastPersisted, root.ready, root.error)) return;
             try {
                 var state = Logic.parse(incoming);
+                state.settings = Settings.normalise(state.settings);
                 root.workspace = state;
                 root.lastPersisted = Logic.serialize(state);
                 root.error = "";
@@ -626,6 +636,14 @@ Item {
             var cmd = command || "get";
             if (cmd === "get") return JSON.stringify(root.workspace);
             if (cmd === "sync-status") return JSON.stringify(root.workspace.sync || {});
+            if (cmd === "settings") return JSON.stringify(root.workspace.settings || {});
+            if (cmd === "settings-set") {
+                var parsed = null;
+                try { parsed = JSON.parse(a || "{}"); } catch (e) { return JSON.stringify({ok: false, error: "Invalid settings JSON"}); }
+                var saved = root.setSettings(parsed);
+                root.recordAgentAction(cmd);
+                return JSON.stringify({ok: saved, settings: root.workspace.settings});
+            }
             if (cmd === "tasks" || cmd === "add-task" || cmd === "complete-task" || cmd === "archive-task" || cmd === "restore-task" || cmd === "set-due" || cmd === "set-tags") {
                 var tmap = {"tasks": a || "list", "add-task": "add", "complete-task": "complete",
                             "archive-task": "archive", "restore-task": "restore", "set-due": "due",

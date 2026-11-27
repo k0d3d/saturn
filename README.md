@@ -94,6 +94,14 @@ Tasks are local to this computer. No account is needed and nothing is uploaded.
 - The add field understands `tomorrow`, `today`, `next Mon` and `YYYY-MM-DD`;
   the **Today** / **Tomorrow** chips and the due field set an explicit date.
 - ▶ selects a task for the focus timer. Long titles wrap in full.
+- Titles are tagged instantly from their meaningful words (`Buy milk tomorrow`
+  becomes tag `milk`). Renaming adds new words without dropping curated tags.
+  A scheduled pass refines those tags with OpenCode's local DeepSeek model;
+  `saturn tags status` shows the schedule and `saturn tags run` forces a pass.
+  Configure it in `workspace.settings.llm` — `enabled`, `model`, `hours` (24h),
+  `batch`, `timeout` and an optional `prompt` — with
+  `saturn data settings-set '{"llm":{"hours":[9,18]}}'`. There is no settings
+  screen yet. Refined tags become graph nodes and edges in `saturn graph`.
 - Tasks are stored with `due`, `completedAt`, `archived`, tags and timestamps in
   `~/.local/share/saturn/workspace.json`, so an AI agent can read and update them.
 - `saturn tasks` lists tasks; `saturn tasks add "Buy milk tomorrow"`,

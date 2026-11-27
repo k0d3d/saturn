@@ -38,6 +38,8 @@ saturn data sync-status          # sync metadata and agent audit, no note bodies
 saturn data tasks list           # all task objects
 saturn data notes list           # library note objects
 saturn data search "query" [limit]
+saturn data settings             # LLM tag-pass config in workspace.settings.llm
+saturn tags status               # schedule, model and pending task count
 saturn tasks list                # short alias
 saturn notes list                # short alias
 ```
@@ -56,12 +58,18 @@ saturn data update-note <id> "Title" "Body" "tag1,tag2"
 saturn data pin-note <id>
 saturn data archive-note <id>
 saturn data restore-note <id>
+saturn data settings-set '{"llm":{"hours":[9,18]}}'
+saturn tags run                  # force the DeepSeek tag-refinement pass
 ```
 
 The offline script accepts the same lowercase/underscore-free names:
 `get`, `status`, `sync-status`, `tasks-list`, `notes-list`, `search`,
 `add-task`, `complete-task`, `archive-task`, `restore-task`, `set-due`, `set-tags`,
-`add-note`, `update-note`, `pin-note`, `archive-note`, `restore-note`.
+`add-note`, `update-note`, `pin-note`, `archive-note`, `restore-note`,
+`settings`, `settings-set`.
+
+Task titles are tagged deterministically on add and rename; `saturn tags run`
+asks OpenCode's DeepSeek model to refine them at configured hours.
 
 ## Data shapes
 

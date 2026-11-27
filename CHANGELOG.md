@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Task titles are now tagged automatically. The shell and the offline API both derive lowercase tags from meaningful title words on add, and renaming adds new words without wiping curated tags. A scheduled background pass refines them via OpenCode's DeepSeek model and turns them into graph edges; run it hourly from a user timer, with `settings.llm` (model, hours, batch, timeout, prompt) configurable through `saturn data settings-set` until a settings screen exists.
+
 - The dashboard header mark is now animated: the SVG is split into back-ring, planet, front-ring and star layers so the two ring bands counter-rotate and the stars twinkle on staggered cycles, with a quiet focus-reactive halo. The bar icon stays a calm static raster.
 - Closing the workspace (X, Escape or any other close path) now saves the open card and its navigation per screen to a local `ui-state.json`. Relaunching reopens that card, note, task, day and tab instead of resetting to the five-card grid. The state stays out of the synced workspace file.
 - The due-date field now accepts `today`, `tomorrow`, `next <weekday>` and ISO dates. Previously typing `tomorrow` there was silently discarded; both task creation and inline due editing use the same parser as title dates.

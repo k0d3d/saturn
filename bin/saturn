@@ -40,6 +40,10 @@ case "$action" in
     shift
     exec python3 "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/../scripts/saturn_graph.py" "$@"
     ;;
+  tags)
+    shift
+    exec python3 "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/../scripts/llm_tags.py" "$@"
+    ;;
   open|notesOpen|command|connections|dashboard|close|status|toggle) exec_shell_command=(omarchy-shell saturn "$action") ;;
   --version) echo 'Saturn 0.8.0'; exit 0 ;;
   --help|-h)
@@ -50,6 +54,7 @@ case "$action" in
     echo '       vault [push|pull|sync|status]'
     echo '       calendar [list|add|archive|sync|status]'
     echo '       graph [status|reindex|link|unlink|neighbors|backlinks|path|list|resolve|forget|backup]'
+    echo '       tags [run|status]'
     exit 0 ;;
   *)
     if [[ "$action" == assistant || "$action" == messages || "$action" == voice* || "$action" == grok* ]]; then

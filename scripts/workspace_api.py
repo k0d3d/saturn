@@ -18,7 +18,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import initialize  # noqa: E402
+from tags import from_title as tags_from_title  # noqa: E402
+from settings import normalise as normalise_settings  # noqa: E402
 
 DATA_HOME = Path(os.environ.get('XDG_DATA_HOME') or Path.home() / '.local/share')
 DATA_DIR = DATA_HOME / 'saturn'
@@ -27,7 +30,7 @@ LOCK = DATA_DIR / '.workspace.lock'
 BACKUPS = DATA_HOME / 'omaowl-backups'
 DAY = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 WRITE_COMMANDS = {'add-task', 'complete-task', 'archive-task', 'restore-task', 'set-due', 'set-tags',
-                  'add-note', 'update-note', 'pin-note', 'archive-note', 'restore-note'}
+                  'add-note', 'update-note', 'pin-note', 'archive-note', 'restore-note', 'settings-set'}
 
 
 def output(payload):
@@ -143,7 +146,7 @@ def main(argv):
         fail('A command is required. Try: get, tasks-list, add-task, notes-list, add-note, search')
     command = argv[0]
     args = argv[1:]
-    if command not in WRITE_COMMANDS and command not in {'get', 'status', 'sync-status', 'tasks-list', 'notes-list', 'search'}:
+    if command not in WRITE_COMMANDS and command not in {'get', 'status', 'sync-status', 'settings', 'tasks-list', 'notes-list', 'search'}:
         fail('Unknown data command')
     if command in WRITE_COMMANDS and shell_live():
         fail('Saturn shell is running; use `saturn data ...` so the live workspace stays in sync', 3)
@@ -156,6 +159,18 @@ def main(argv):
                     'notes': len(state.get('notesV2', [])) + len(state.get('notes', {}))})
         elif command == 'sync-status':
             output(state.get('sync', {}))
+        elif command == 'settings':
+            output(state.get('settings', {}))
+        elif command == 'settings-set':
+            try:
+                raw = json.loads(args[0] if args else '{}')
+            except (ValueError, TypeError):
+                fail('Settings must be a JSON object')
+            if not isinstance(raw, dict):
+                fail('Settings must be a JSON object')
+            state['settings'] = normalise_settings(raw)
+            write_state(state, command)
+            output({'ok': True, 'settings': state['settings']})
         elif command == 'tasks-list':
             output(state.get('tasks', []))
         elif command == 'notes-list':
@@ -174,7 +189,7 @@ def main(argv):
             stamp = int(__import__('time').time() * 1000)
             task = {'id': __import__('uuid').uuid4().hex[:14], 'title': title, 'done': False,
                     'completedAt': 0, 'due': due, 'createdAt': stamp, 'updatedAt': stamp,
-                    'archived': False, 'archivedAt': 0, 'body': '', 'tags': [],
+                    'archived': False, 'archivedAt': 0, 'body': '', 'tags': tags_from_title(title),
                     'source': 'local', 'externalId': None}
             state.setdefault('tasks', []).insert(0, task)
             write_state(state, command)

@@ -4,8 +4,12 @@ import json
 import os
 import re
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'scripts'))
+import settings  # noqa: E402
 
 DATA_HOME = Path(os.environ.get('XDG_DATA_HOME') or Path.home() / '.local/share')
 DATA_DIR = DATA_HOME / 'saturn'
@@ -29,6 +33,7 @@ def fresh():
         'focus': {'title': 'Open focus', 'duration': 1500, 'elapsed': 0, 'running': False},
         'sync': {'providers': {}, 'conflicts': [], 'tombstones': []},
         'insights': {},
+        'settings': settings.fresh(),
     }
 
 
@@ -58,6 +63,7 @@ def migrate(state):
 
     result = dict(state)
     result['version'] = 2
+    result['settings'] = settings.normalise(state.get('settings'))
 
     tasks = []
     for raw in state.get('tasks', []):
